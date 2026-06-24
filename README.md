@@ -2,7 +2,7 @@
 
 # 🛂 Passport-OCR-YOLO
 
-[![Proje Demo](gif/demo_thumbnail.jpg)](gif/PDSgif.mp4)
+[![Proje Demo](gif/PDS.gif)
 
 **YOLO ile MRZ tespiti · MRZ çözümleme · OCR ile yapılandırılmış JSON çıktısı**
 
