@@ -148,13 +148,16 @@ def _easy_read_strip(strip: np.ndarray, target_len: int) -> tuple[str, float]:
         allowlist=_ALLOWLIST,
         detail=1,
         paragraph=False,
-        # Tune detector for wide, single-line MRZ strips.
-        min_size=10,
-        text_threshold=0.5,
-        low_text=0.3,
-        link_threshold=0.3,
-        width_ths=0.9,   # merge horizontally close detections
-        height_ths=0.5,
+        # MRZ strips are single wide lines — aggressive horizontal merging is correct.
+        min_size=8,
+        text_threshold=0.4,   # lower: catch faint characters on aged/scanned docs
+        low_text=0.25,        # lower: include weak text blobs
+        link_threshold=0.2,   # lower: link character fragments more aggressively
+        width_ths=2.0,        # very high: merge all fragments into one detection per line
+        height_ths=0.8,
+        slope_ths=0.2,        # tolerate slight horizontal misalignment
+        ycenter_ths=0.8,      # allow characters slightly off the baseline
+        add_margin=0.05,
     )
 
     if not results:
@@ -201,22 +204,51 @@ def _run_paddle(image: np.ndarray, n_lines: int = 2) -> OcrResult:
         lines.append(OcrLine(text=text, confidence=conf))
     return OcrResult(lines=lines, engine="paddleocr")
 
+def _paddle_read_full(image: np.ndarray, n_lines: int, target_len: int) -> OcrResult:
+    paddle = _get_paddle()
+    image = _upscale_strip(image)
+    try:
+        raw = paddle.ocr(image, det=True, cls=False)
+    except Exception as exc:
+        return OcrResult(lines=[], engine=f"paddle_det_error:{exc}")
+
+    if not raw or not raw[0]:
+        return OcrResult(lines=[], engine="paddle_det")
+
+    # Sort detections top-to-bottom by their bounding box top-left y.
+    detections = sorted(raw[0], key=lambda x: x[0][0][1])
+
+    lines: list[OcrLine] = []
+    for box_text_conf in detections[:n_lines]:
+        text, conf = box_text_conf[1]
+        cleaned = _snap(_clean_text(text), target_len)
+        lines.append(OcrLine(text=cleaned, confidence=float(conf)))
+
+    return OcrResult(lines=lines, engine="paddle_det")
+
+
 # Public API
 def run_ocr(image: np.ndarray, n_lines: int = 2) -> list[OcrResult]:
     results: list[OcrResult] = []
+    target_len = 30 if n_lines >= 3 else 44
 
     # --- EasyOCR (GPU, primary) ---
     try:
         results.append(_run_easy(image, n_lines))
     except Exception as exc:
-        # Don't crash the pipeline if EasyOCR fails on one candidate.
         results.append(OcrResult(lines=[], engine=f"easyocr_error:{exc}"))
 
-    # --- PaddleOCR (secondary) ---
+    # --- PaddleOCR recognition-only (fast secondary) ---
     try:
         results.append(_run_paddle(image, n_lines))
     except Exception as exc:
         results.append(OcrResult(lines=[], engine=f"paddleocr_error:{exc}"))
+
+    # --- PaddleOCR full detection+recognition (best for complex backgrounds) ---
+    try:
+        results.append(_paddle_read_full(image, n_lines, target_len))
+    except Exception as exc:
+        results.append(OcrResult(lines=[], engine=f"paddle_det_error:{exc}"))
 
     return results
 
@@ -225,5 +257,3 @@ def run_ocr_multi(images: list[np.ndarray]) -> list[OcrResult]:
     for img in images:
         results.extend(run_ocr(img))
     return results
-
-

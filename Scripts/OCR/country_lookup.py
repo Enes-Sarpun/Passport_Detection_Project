@@ -20,7 +20,28 @@ _ICAO_OVERRIDES: dict[str, str] = {
     "XXX": "Unspecified nationality",
 }
 
-def resolve_country(alpha3: str) -> dict[str, str]:
+# OCR digit→letter confusions that appear in alphabetic-only fields (country codes).
+_DIGIT_TO_LETTER: dict[str, str] = {
+    "0": "O",
+    "1": "I",
+    "5": "S",
+    "8": "B",
+    "2": "Z",
+    "6": "G",
+}
+
+def _repair_country_digits(code: str) -> str:
+    """Replace digit OCR confusions in a 3-letter country code (all chars must be A-Z)."""
+    return "".join(_DIGIT_TO_LETTER.get(c, c) for c in code)
+
+
+def resolve_country(alpha3: str, repaired: list[str] | None = None, field_name: str = "") -> dict[str, str]:
+    """Resolve an ISO/ICAO alpha-3 country code to a name dict.
+
+    If *repaired* list is provided and the code needed digit→letter repair,
+    *field_name* is appended to that list so the caller can record it in
+    ``auto_repaired_fields``.
+    """
     raw = alpha3.strip().upper()
 
     # Check ICAO overrides before stripping '<' — codes like 'D<<' must match as-is.
@@ -34,11 +55,27 @@ def resolve_country(alpha3: str) -> dict[str, str]:
     if code in _ICAO_OVERRIDES:
         return {"code": code, "name": _ICAO_OVERRIDES[code]}
 
-    try:
-        country = pycountry.countries.get(alpha_3=code)
-        if country:
-            return {"code": code, "name": country.name}
-    except Exception:
-        pass
+    def _lookup(c: str) -> str | None:
+        try:
+            country = pycountry.countries.get(alpha_3=c)
+            return country.name if country else None
+        except Exception:
+            return None
+
+    name = _lookup(code)
+    if name:
+        return {"code": code, "name": name}
+
+    # Attempt digit→letter repair if any digit is present.
+    if any(c.isdigit() for c in code):
+        repaired_code = _repair_country_digits(code)
+        if repaired_code != code:
+            name = _lookup(repaired_code)
+            if name is None and repaired_code in _ICAO_OVERRIDES:
+                name = _ICAO_OVERRIDES[repaired_code]
+            if name:
+                if repaired is not None and field_name:
+                    repaired.append(field_name)
+                return {"code": repaired_code, "name": name}
 
     return {"code": code, "name": "Unknown"}

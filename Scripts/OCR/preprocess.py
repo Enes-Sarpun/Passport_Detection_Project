@@ -57,6 +57,12 @@ def _clahe(gray: np.ndarray) -> np.ndarray:
     return clahe.apply(gray)
 
 
+def _clahe_aggressive(gray: np.ndarray) -> np.ndarray:
+    """Stronger CLAHE pass for low-contrast / aged document scans."""
+    clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(4, 4))
+    return clahe.apply(gray)
+
+
 def _sharpen(gray: np.ndarray) -> np.ndarray:
     blurred = cv2.GaussianBlur(gray, (0, 0), sigmaX=1.5)
     return cv2.addWeighted(gray, 1.8, blurred, -0.8, 0)
@@ -72,6 +78,54 @@ def _adaptive(gray: np.ndarray) -> np.ndarray:
     bw = cv2.adaptiveThreshold(denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                 cv2.THRESH_BINARY, 31, 10)
     return cv2.cvtColor(bw, cv2.COLOR_GRAY2BGR)
+
+
+def _morpho_clean(gray: np.ndarray) -> np.ndarray:
+    """Morphological opening to remove background noise, then Otsu."""
+    denoised = cv2.fastNlMeansDenoising(gray, h=15, templateWindowSize=7, searchWindowSize=21)
+    _, bw = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    cleaned = cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel)
+    return cv2.cvtColor(cleaned, cv2.COLOR_GRAY2BGR)
+
+
+def _normalize_contrast(gray: np.ndarray) -> np.ndarray:
+    """Stretch histogram to full [0,255] range then apply CLAHE."""
+    norm = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(4, 4))
+    return clahe.apply(norm)
+
+
+def _suppress_guilloche(gray: np.ndarray, n_lines: int = 2) -> np.ndarray:
+    h, w = gray.shape[:2]
+
+    # Step 1: estimate background by blurring heavily.
+    # Kernel must be odd; choose ~1/8 of image width to span several pattern cycles.
+    ksize = max(31, (w // 8) | 1)
+    bg = cv2.GaussianBlur(gray, (ksize, ksize), 0)
+
+    # Step 2: subtract background (shift to 128 so we don't clip negatives).
+    diff = cv2.addWeighted(gray, 1.0, bg, -1.0, 128)
+    diff = cv2.normalize(diff, None, 0, 255, cv2.NORM_MINMAX)
+
+    # Step 3: large-block adaptive threshold per horizontal band.
+    band_h = h // n_lines
+    output = np.ones_like(diff) * 255  # white background
+    for i in range(n_lines):
+        y0 = i * band_h
+        y1 = h if i == n_lines - 1 else (i + 1) * band_h
+        band = diff[y0:y1, :]
+        # Block size must be odd and cover at least one character width.
+        block = max(31, (band.shape[1] // 20) | 1)
+        bw = cv2.adaptiveThreshold(band, 255,
+                                   cv2.ADAPTIVE_THRESH_MEAN_C,
+                                   cv2.THRESH_BINARY, block, 8)
+        output[y0:y1, :] = bw
+
+    # Light morphological opening to remove residual fine-pattern dots.
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    output = cv2.morphologyEx(output, cv2.MORPH_OPEN, kernel)
+    return output
 
 
 def _mark_filler_columns(binary: np.ndarray, n_lines: int) -> np.ndarray:
@@ -105,8 +159,10 @@ def _mark_filler_columns(binary: np.ndarray, n_lines: int) -> np.ndarray:
 
     return marked
 
-def preprocess(image: np.ndarray,box: tuple[int, int, int, int],n_lines: int = 2,*,do_deskew: bool = True,do_upscale: bool = True,do_clahe: bool = True,) -> list[np.ndarray]:
-    
+def preprocess(image: np.ndarray, box: tuple[int, int, int, int], n_lines: int = 2, *,
+               do_deskew: bool = True, do_upscale: bool = True, do_clahe: bool = True,
+               ) -> list[np.ndarray]:
+
     cropped = crop(image, box)
     gray = _to_gray(cropped)
 
@@ -122,18 +178,42 @@ def preprocess(image: np.ndarray,box: tuple[int, int, int, int],n_lines: int = 2
     if do_upscale:
         gray = upscale(gray, n_lines=n_lines)
 
+    # --- Standard candidates (always produced) ---
     otsu_img = _otsu(gray)
     adaptive_img = _adaptive(gray)
     raw_bgr = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
-    # 4th candidate: Otsu with filler-column marks to help OCR detect '<'.
+    # 4th: Otsu with filler-column marks to help OCR detect '<'.
     _, otsu_binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    # Invert so text is white-on-black for column projection
     inv = cv2.bitwise_not(otsu_binary)
     marked = _mark_filler_columns(inv, n_lines=n_lines)
     marked_bgr = cv2.cvtColor(cv2.bitwise_not(marked), cv2.COLOR_GRAY2BGR)
 
-    return [otsu_img, adaptive_img, raw_bgr, marked_bgr]
+    # --- Extra candidates for low-contrast / noisy / aged scans ---
+    # 5th: histogram-stretched + aggressive CLAHE → helps faded documents.
+    norm_gray = _normalize_contrast(_to_gray(cropped))
+    if do_deskew:
+        norm_gray = deskew(norm_gray)
+    if do_upscale:
+        norm_gray = upscale(norm_gray, n_lines=n_lines)
+    norm_img = _otsu(norm_gray)
 
+    # 6th: morphological noise removal → helps speckle/background pattern interference.
+    morpho_gray = _clahe_aggressive(_to_gray(cropped))
+    if do_deskew:
+        morpho_gray = deskew(morpho_gray)
+    if do_upscale:
+        morpho_gray = upscale(morpho_gray, n_lines=n_lines)
+    morpho_img = _morpho_clean(morpho_gray)
 
+    # 7th: guilloche/security-pattern suppression → background subtraction +
+    # per-band adaptive threshold. Critical for documents with dense wave patterns.
+    guilloche_base = _to_gray(cropped)
+    if do_deskew:
+        guilloche_base = deskew(guilloche_base)
+    if do_upscale:
+        guilloche_base = upscale(guilloche_base, n_lines=n_lines)
+    guilloche_bw = _suppress_guilloche(guilloche_base, n_lines=n_lines)
+    guilloche_img = cv2.cvtColor(guilloche_bw, cv2.COLOR_GRAY2BGR)
 
+    return [otsu_img, adaptive_img, raw_bgr, marked_bgr, norm_img, morpho_img, guilloche_img]

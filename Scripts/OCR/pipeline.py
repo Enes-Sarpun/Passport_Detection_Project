@@ -70,19 +70,29 @@ def _process_frame(
         return None, detection, reconstructed
 
     if parsed is None:
-        # Check digits don't match but we have raw MRZ text — return it for debugging.
-        result = failure_output("parse_failed", raw_mrz=chosen_lines)
+        result = failure_output("parse_failed", raw_mrz=chosen_lines, warnings=["mrz_format_invalid"])
         return result, detection, reconstructed
 
     ocr_conf = sum(r.mean_confidence for r in ocr_results if r.lines) / max(
         sum(1 for r in ocr_results if r.lines), 1
     )
 
+    # Collect pipeline-stage warnings to pass into schema builder.
+    pipeline_warnings: list[str] = []
+    if detection.confidence < 0.5:
+        pipeline_warnings.append("low_detection_confidence")
+    x1, y1, x2, y2 = detection.box
+    img_h, img_w = image.shape[:2]
+    box_w, box_h = x2 - x1, y2 - y1
+    if box_w < img_w * 0.5 or box_h < img_h * 0.05:
+        pipeline_warnings.append("mrz_partially_occluded")
+
     output = build_output(
         parsed,
         detection_confidence=detection.confidence,
         ocr_confidence=ocr_conf,
         raw_mrz=chosen_lines,
+        extra_warnings=pipeline_warnings,
     )
     return output, detection, reconstructed
 
@@ -112,7 +122,10 @@ def process_image(
     try:
         output, detection, _ = _process_frame(image, weights=weights, conf_threshold=conf_threshold)
         if output is None:
-            result = failure_output("no_mrz_detected" if detection is None else "parse_failed")
+            if detection is None:
+                result = failure_output("no_mrz_detected", warnings=["no_mrz_detected"])
+            else:
+                result = failure_output("parse_failed", warnings=["mrz_format_invalid"])
         else:
             result = output
 
@@ -237,7 +250,7 @@ def _vote_and_parse(
 
     parsed = parse_mrz(voted_lines)
     if parsed is None:
-        return failure_output("parse_failed", raw_mrz=voted_lines)
+        return failure_output("parse_failed", raw_mrz=voted_lines, warnings=["mrz_format_invalid"])
 
     return build_output(
         parsed,
@@ -245,5 +258,3 @@ def _vote_and_parse(
         ocr_confidence=0.0,
         raw_mrz=voted_lines,
     )
-
-

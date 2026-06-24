@@ -3,6 +3,7 @@ import datetime as _dt
 import itertools
 from dataclasses import dataclass, field
 from typing import Optional
+from .country_lookup import resolve_country as _resolve_country, _repair_country_digits
 
 MRZ_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
 
@@ -102,15 +103,48 @@ def parse_date(yymmdd: str, *, is_birth: bool) -> Optional[str]:
     except ValueError:
         return None
 
-def parse_name(name_field: str) -> tuple[str, str]:
+# Digit→letter map for name fields (letters + '<' only, digits are OCR confusions).
+_NAME_DIGIT_TO_LETTER: dict[str, str] = {
+    "0": "O",
+    "1": "I",
+    "5": "S",
+    "8": "B",
+    "2": "Z",
+    "6": "G",
+}
+
+def _repair_name_digits(segment: str) -> str:
+    return "".join(_NAME_DIGIT_TO_LETTER.get(c, c) for c in segment)
+
+def parse_name(name_field: str, repaired: list[str] | None = None) -> tuple[str, str, dict]:
+    # Split on '<<' to separate surname from given names.
     parts = name_field.split("<<", 1)
-    surname = parts[0].replace("<", " ").strip()
-    given = ""
-    if len(parts) > 1:
-        given = parts[1].replace("<", " ").strip()
-    given = " ".join(given.split())
-    surname = " ".join(surname.split())
-    return surname, given
+    raw_surname = parts[0]
+    raw_given = parts[1] if len(parts) > 1 else ""
+
+    # Detect and repair digits in name segments (Class 2 fix).
+    had_digit = any(c.isdigit() for c in raw_surname + raw_given)
+    raw_surname = _repair_name_digits(raw_surname)
+    raw_given = _repair_name_digits(raw_given)
+    if had_digit and repaired is not None:
+        repaired.append("name")
+
+    # Convert single '<' to spaces, strip trailing padding.
+    surname = " ".join(raw_surname.replace("<", " ").split())
+    given_names = " ".join(raw_given.replace("<", " ").split())
+
+    # Build given_names_list from individual name components (split by space).
+    given_names_list = [g for g in given_names.split(" ") if g] if given_names else []
+
+    full_name = f"{given_names} {surname}".strip() if given_names else surname
+
+    name_dict = {
+        "surname": surname,
+        "given_names": given_names,
+        "given_names_list": given_names_list,
+        "full_name": full_name,
+    }
+    return surname, given_names, name_dict
 
 @dataclass
 class MRZResult:
@@ -126,6 +160,7 @@ class MRZResult:
     personal_number: str
     surname: str
     given_names: str
+    name_dict: dict = field(default_factory=dict)
     validation: dict = field(default_factory=dict)
     auto_repaired_fields: list[str] = field(default_factory=list)
 
@@ -138,18 +173,49 @@ def _validate_and_repair(value: str, expected_cd: str, field_name: str, repaired
         return fixed, True
     return value, False
 
+def _repair_alpha3(code: str, field_name: str, repaired: list[str]) -> str:
+    if not any(c.isdigit() for c in code):
+        return code
+    fixed = _repair_country_digits(code)
+    if fixed != code:
+        repaired.append(field_name)
+    return fixed
+
 def parse_td3(line1: str, line2: str) -> MRZResult:
     line1 = line1.ljust(44, "<")[:44]
     line2 = line2.ljust(44, "<")[:44]
     repaired: list[str] = []
 
+    # ICAO TD3: char[0] = doc type letter, char[1] = sub-type or '<'.
+    # In practice char[1] is almost always '<' (filler). OCR commonly reads
+    # '<' as look-alike letters. Strategy: if char[1] is NOT '<' but chars[1:4]
+    # form a valid/repairable ISO-3166 country code, treat char[1] as '<' and
+    # shift: the real country code starts at char[1].
+    _FILLER_LOOKALIKES = {"V", "U", "W", "N", "M", "T"}
+    line1_chars = list(line1)
+    if line1_chars[0] in "PICVA" and line1_chars[1] != "<":
+        # Try inserting '<' at position 1 — shift country code one left.
+        candidate_country = "".join(line1_chars[1:4])
+        repaired_candidate = _repair_country_digits(candidate_country)
+        from .country_lookup import resolve_country as _rc
+        if _rc(repaired_candidate)["name"] != "Unknown":
+            # chars[1:4] is a valid country code → char[1] was the filler '<'.
+            line1_chars.insert(1, "<")
+            line1 = "".join(line1_chars[:44]).ljust(44, "<")[:44]
+            repaired.append("document_type")
+        elif line1_chars[1] in _FILLER_LOOKALIKES:
+            # chars[1:4] not a country code but char[1] looks like '<' → replace.
+            line1_chars[1] = "<"
+            line1 = "".join(line1_chars)
+            repaired.append("document_type")
+
     doc_type = line1[0:2].replace("<", "").strip()
-    issuing = line1[2:5]
-    surname, given = parse_name(line1[5:44])
+    issuing = _repair_alpha3(line1[2:5], "issuing_country", repaired)
+    surname, given, name_dict = parse_name(line1[5:44], repaired)
 
     doc_number = line2[0:9]
     doc_number_cd = line2[9]
-    nationality = line2[10:13]
+    nationality = _repair_alpha3(line2[10:13], "nationality", repaired)
     birth = line2[13:19]
     birth_cd = line2[19]
     sex = line2[20].replace("<", "")
@@ -185,6 +251,7 @@ def parse_td3(line1: str, line2: str) -> MRZResult:
         personal_number=personal.replace("<", ""),
         surname=surname,
         given_names=given,
+        name_dict=name_dict,
         validation={
             "document_number_valid": doc_valid,
             "date_of_birth_valid": birth_valid,
@@ -201,12 +268,12 @@ def parse_td2(line1: str, line2: str) -> MRZResult:
     repaired: list[str] = []
 
     doc_type = line1[0:2].replace("<", "").strip()
-    issuing = line1[2:5]
-    surname, given = parse_name(line1[5:36])
+    issuing = _repair_alpha3(line1[2:5], "issuing_country", repaired)
+    surname, given, name_dict = parse_name(line1[5:36], repaired)
 
     doc_number = line2[0:9]
     doc_number_cd = line2[9]
-    nationality = line2[10:13]
+    nationality = _repair_alpha3(line2[10:13], "nationality", repaired)
     birth = line2[13:19]
     birth_cd = line2[19]
     sex = line2[20].replace("<", "")
@@ -235,6 +302,7 @@ def parse_td2(line1: str, line2: str) -> MRZResult:
         personal_number=optional.replace("<", ""),
         surname=surname,
         given_names=given,
+        name_dict=name_dict,
         validation={
             "document_number_valid": doc_valid,
             "date_of_birth_valid": birth_valid,
@@ -251,7 +319,7 @@ def parse_td1(line1: str, line2: str, line3: str) -> MRZResult:
     repaired: list[str] = []
 
     doc_type = line1[0:2].replace("<", "").strip()
-    issuing = line1[2:5]
+    issuing = _repair_alpha3(line1[2:5], "issuing_country", repaired)
     doc_number = line1[5:14]
     doc_number_cd = line1[14]
     optional1 = line1[15:30]
@@ -261,11 +329,11 @@ def parse_td1(line1: str, line2: str, line3: str) -> MRZResult:
     sex = line2[7].replace("<", "")
     expiry = line2[8:14]
     expiry_cd = line2[14]
-    nationality = line2[15:18]
+    nationality = _repair_alpha3(line2[15:18], "nationality", repaired)
     optional2 = line2[18:29]
     composite_cd = line2[29]
 
-    surname, given = parse_name(line3)
+    surname, given, name_dict = parse_name(line3, repaired)
 
     doc_number, doc_valid = _validate_and_repair(doc_number, doc_number_cd, "document_number", repaired)
     birth, birth_valid = _validate_and_repair(birth, birth_cd, "date_of_birth", repaired)
@@ -287,6 +355,7 @@ def parse_td1(line1: str, line2: str, line3: str) -> MRZResult:
         personal_number=(optional1 + optional2).replace("<", ""),
         surname=surname,
         given_names=given,
+        name_dict=name_dict,
         validation={
             "document_number_valid": doc_valid,
             "date_of_birth_valid": birth_valid,
@@ -306,4 +375,5 @@ def parse_mrz(lines: list[str]) -> Optional[MRZResult]:
     if len(lines) == 3:
         return parse_td1(lines[0], lines[1], lines[2])
     return None
+
 
