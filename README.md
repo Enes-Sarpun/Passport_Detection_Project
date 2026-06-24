@@ -56,6 +56,9 @@ Passport-OCR-YOLO/
 ├── Images/                 # Görüntü verisi (git'e dahil değildir)
 │   ├── Kimlikler/
 │   └── Original Data/
+│   └── MRZ Data/
+│   └── Outputs/
+│   └── Results/
 ├── SQL/
 │   └── europa_data.db      # Referans veritabanı (ülke / belge bilgileri)
 ├── .gitignore
