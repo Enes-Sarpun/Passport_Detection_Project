@@ -1,7 +1,4 @@
-"""Country name resolution from 3-letter alpha-3 codes via pycountry + ICAO overrides."""
-
 from __future__ import annotations
-
 import pycountry
 
 # ICAO-special / reserved codes that are not in ISO 3166-1 alpha-3.
@@ -23,9 +20,7 @@ _ICAO_OVERRIDES: dict[str, str] = {
     "XXX": "Unspecified nationality",
 }
 
-
 def resolve_country(alpha3: str) -> dict[str, str]:
-    """Return {'code': alpha3, 'name': full_name} for the given 3-letter code."""
     raw = alpha3.strip().upper()
 
     # Check ICAO overrides before stripping '<' — codes like 'D<<' must match as-is.

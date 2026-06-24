@@ -1,10 +1,6 @@
-"""Snap raw OCR lines to the fixed MRZ grid and column-wise vote across OCR candidates."""
-
 from __future__ import annotations
-
 from collections import Counter
 from dataclasses import dataclass
-
 from .ocr import OcrResult
 
 # Canonical line lengths per format.
@@ -21,30 +17,17 @@ _FILLER_MAP = str.maketrans("ckC([ ", "<<<<<<")
 # We use these to strip leading junk characters introduced by OCR.
 _VALID_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<")
 
-
 def _normalize(text: str) -> str:
-    """Uppercase, remap common filler-lookalikes, keep only MRZ charset."""
     text = text.upper().translate(_FILLER_MAP)
     return "".join(c if c in _VALID_CHARS else "<" for c in text)
 
 
 def _snap_line(text: str, length: int) -> str:
-    """Left-justify and pad/truncate to exactly `length` chars."""
     text = text.ljust(length, "<")[:length]
     return text
 
 
 def _align_line(text: str, length: int, line_idx: int) -> str:
-    """Remove leading/trailing OCR junk and align to canonical MRZ length.
-
-    OCR engines sometimes produce leading '<' or extra characters at the
-    start of a line if the strip includes a small amount of whitespace at
-    the left edge. This function finds the correct offset by:
-      1. Stripping leading '<' for line 0 (which must not start with '<').
-      2. Using a sliding window to find the offset that maximises non-'<'
-         content within the target length.
-    Then left-pads / truncates to `length`.
-    """
     text = _normalize(text)
     if not text:
         return "<" * length
@@ -72,10 +55,6 @@ def _align_line(text: str, length: int, line_idx: int) -> str:
 
 
 def detect_format(lines: list[str]) -> tuple[str, int]:
-    """Infer TD1/TD2/TD3 from line count and average line length.
-
-    Returns (format_name, canonical_line_length).
-    """
     n = len(lines)
     avg_len = sum(len(l) for l in lines) / max(n, 1)
 
@@ -94,21 +73,13 @@ def detect_format(lines: list[str]) -> tuple[str, int]:
     best = min(dists, key=dists.get)
     return best, {"TD3": TD3_LEN, "TD2": TD2_LEN, "TD1": TD1_LEN}[best]
 
-
 def _extract_lines(ocr_result: OcrResult, n_lines: int) -> list[str]:
-    """Pull up to n_lines text strings out of an OcrResult, padding with '<' if short."""
     lines = [l.text for l in ocr_result.lines[:n_lines]]
     while len(lines) < n_lines:
         lines.append("")
     return lines
 
-
 def column_vote(candidates: list[str], confidences: list[float], length: int) -> str:
-    """Column-wise majority vote: for each position, pick char with highest weighted count.
-
-    '<' votes are down-weighted so that a single engine producing the correct
-    character beats multiple engines producing '<' at filler positions.
-    """
     snapped = [_snap_line(c, length) for c in candidates]
     result = []
     for col in range(length):
@@ -121,23 +92,13 @@ def column_vote(candidates: list[str], confidences: list[float], length: int) ->
         result.append(votes.most_common(1)[0][0])
     return "".join(result)
 
-
 @dataclass
 class ReconstructedMRZ:
     fmt: str
     lines: list[str]
     line_length: int
 
-
 def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
-    """Turn multiple OCR candidate results into a single snapped MRZ.
-
-    Steps:
-      1. Determine line count and format from the best (highest-confidence) result.
-      2. Align each candidate line to the canonical grid (removes leading '<' drift).
-      3. Column-wise vote across all candidates for each line.
-      4. Snap each line to the canonical length.
-    """
     if not ocr_results:
         return ReconstructedMRZ(fmt="TD3", lines=[], line_length=TD3_LEN)
 
@@ -169,3 +130,5 @@ def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
         result_lines.append(voted)
 
     return ReconstructedMRZ(fmt=fmt, lines=result_lines, line_length=line_len)
+
+

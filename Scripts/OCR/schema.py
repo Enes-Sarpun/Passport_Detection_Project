@@ -1,17 +1,11 @@
-"""Output schema for the MRZ pipeline. Converts MRZResult to the JSON contract defined in the plan."""
-
 from __future__ import annotations
-
 import json
 from typing import Any, Optional
-
 from .country_lookup import resolve_country
 from .mrz_parse import MRZResult
 
-
 def _date_field(raw: str, iso: Optional[str]) -> dict[str, str]:
     return {"raw": raw, "iso": iso or ""}
-
 
 def build_output(
     result: MRZResult,
@@ -19,7 +13,6 @@ def build_output(
     ocr_confidence: float = 0.0,
     raw_mrz: Optional[list[str]] = None,
 ) -> dict[str, Any]:
-    """Assemble the final JSON-ready dict from a parsed MRZResult."""
     checks = result.validation
     n_checks = len(checks)
     passed_before_repair = sum(
@@ -61,11 +54,11 @@ def build_output(
         "raw_mrz": raw_mrz or [],
     }
 
-
 def failure_output(status: str, raw_mrz: Optional[list[str]] = None) -> dict[str, Any]:
     """Return a minimal failure dict — never raises."""
     return {"status": status, "raw_mrz": raw_mrz or []}
 
-
 def to_json(data: dict[str, Any], indent: int = 2) -> str:
     return json.dumps(data, ensure_ascii=False, indent=indent)
+
+

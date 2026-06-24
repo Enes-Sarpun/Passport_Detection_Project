@@ -1,33 +1,15 @@
-"""OCR backend for MRZ recognition — EasyOCR (GPU, primary) + PaddleOCR (secondary).
-
-Strategy:
-  - Line positions are detected via CV horizontal-projection profile (no OCR needed).
-  - EasyOCR runs first with a strict MRZ allowlist and GPU acceleration.
-  - PaddleOCR runs as a fallback / second vote source.
-  - run_ocr() returns BOTH results so reconstruct.column_vote() can merge them.
-"""
-
 from __future__ import annotations
-
 import os
 from dataclasses import dataclass, field
-
 import cv2
 import numpy as np
-
 os.environ.setdefault("FLAGS_use_mkldnn", "0")
 
-# ---------------------------------------------------------------------------
 # Singletons
-# ---------------------------------------------------------------------------
-
 _PADDLE_INSTANCE = None
 _EASY_INSTANCE = None
 
-# ---------------------------------------------------------------------------
 # MRZ character constants
-# ---------------------------------------------------------------------------
-
 _JUNK_MAP = str.maketrans(
     "OoIilBsSzZqQdD .,;:!?()-",
     "001188552200DD<<<<<<<<<<",
@@ -40,11 +22,7 @@ _MRZ_LENGTHS = (30, 36, 44)
 # MRZ OCR-B characters need at least 64 px cap-height; 80 is a safe minimum.
 _MIN_STRIP_H = 80
 
-
-# ---------------------------------------------------------------------------
 # Lazy engine loaders
-# ---------------------------------------------------------------------------
-
 def _get_paddle():
     global _PADDLE_INSTANCE
     if _PADDLE_INSTANCE is None:
@@ -52,20 +30,14 @@ def _get_paddle():
         _PADDLE_INSTANCE = PaddleOCR(use_angle_cls=False, lang="en", show_log=False)
     return _PADDLE_INSTANCE
 
-
 def _get_easy():
-    """Lazy-load EasyOCR reader with GPU and English model."""
     global _EASY_INSTANCE
     if _EASY_INSTANCE is None:
         import easyocr
         _EASY_INSTANCE = easyocr.Reader(["en"], gpu=True, verbose=False)
     return _EASY_INSTANCE
 
-
-# ---------------------------------------------------------------------------
 # Text cleaning helpers
-# ---------------------------------------------------------------------------
-
 def _clean_char(c: str) -> str:
     c = c.upper()
     if c in _VALID_CHARS:
@@ -73,24 +45,18 @@ def _clean_char(c: str) -> str:
     mapped = c.translate(_JUNK_MAP)
     return mapped if mapped in _VALID_CHARS else "<"
 
-
 def _clean_text(raw: str) -> str:
     return "".join(_clean_char(c) for c in raw.upper().strip())
-
 
 def _nearest_mrz_length(n: int) -> int:
     return min(_MRZ_LENGTHS, key=lambda length: abs(length - n))
 
-
 def _snap(text: str, target: int) -> str:
-    """Pad with '<' or truncate to exactly `target` characters."""
     if len(text) < target:
         return text + "<" * (target - len(text))
     return text[:target]
 
-
 def _upscale_strip(strip: np.ndarray, min_h: int = _MIN_STRIP_H) -> np.ndarray:
-    """Upscale a line strip so its height is at least min_h pixels."""
     h = strip.shape[0]
     if h < min_h:
         scale = min_h / h
@@ -98,16 +64,11 @@ def _upscale_strip(strip: np.ndarray, min_h: int = _MIN_STRIP_H) -> np.ndarray:
                            interpolation=cv2.INTER_CUBIC)
     return strip
 
-
-# ---------------------------------------------------------------------------
 # Data classes
-# ---------------------------------------------------------------------------
-
 @dataclass
 class OcrLine:
     text: str
     confidence: float
-
 
 @dataclass
 class OcrResult:
@@ -120,20 +81,8 @@ class OcrResult:
             return 0.0
         return sum(ln.confidence for ln in self.lines) / len(self.lines)
 
-
-# ---------------------------------------------------------------------------
 # CV-based line position detection (replaces PaddleOCR detection pass)
-# ---------------------------------------------------------------------------
-
 def _detect_line_ys_cv(image: np.ndarray, n_lines: int) -> list[tuple[float, float]]:
-    """Locate MRZ text-line y-extents using a horizontal projection profile.
-
-    Much faster and more reliable than running PaddleOCR in detection mode:
-    - Binarise with Otsu.
-    - Sum ink pixels per row.
-    - Find contiguous ink runs and pick the n_lines largest ones.
-    Falls back to equal-height split if projection fails.
-    """
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
     img_h = gray.shape[0]
 
@@ -175,12 +124,10 @@ def _detect_line_ys_cv(image: np.ndarray, n_lines: int) -> list[tuple[float, flo
     step = img_h / n_lines
     return [(i * step, (i + 1) * step) for i in range(n_lines)]
 
-
 def _extract_strips(
     image: np.ndarray,
     line_ys: list[tuple[float, float]],
 ) -> list[np.ndarray]:
-    """Slice the image into one horizontal strip per detected line."""
     img_h = image.shape[0]
     strips = []
     for y_top, y_bot in line_ys:
@@ -191,13 +138,8 @@ def _extract_strips(
         strips.append(image[y0:y1, :])
     return strips
 
-
-# ---------------------------------------------------------------------------
 # EasyOCR backend — primary engine
-# ---------------------------------------------------------------------------
-
 def _easy_read_strip(strip: np.ndarray, target_len: int) -> tuple[str, float]:
-    """Read one MRZ line strip with EasyOCR (GPU, MRZ allowlist)."""
     reader = _get_easy()
     strip = _upscale_strip(strip)
 
@@ -225,9 +167,7 @@ def _easy_read_strip(strip: np.ndarray, target_len: int) -> tuple[str, float]:
 
     return _snap(_clean_text(combined), target_len), float(avg_conf)
 
-
 def _run_easy(image: np.ndarray, n_lines: int = 2) -> OcrResult:
-    """Run EasyOCR over all MRZ lines detected via CV projection."""
     target_len = 30 if n_lines >= 3 else 44
     line_ys = _detect_line_ys_cv(image, n_lines)
     strips = _extract_strips(image, line_ys)
@@ -239,13 +179,8 @@ def _run_easy(image: np.ndarray, n_lines: int = 2) -> OcrResult:
         lines.append(OcrLine(text=text, confidence=conf))
     return OcrResult(lines=lines, engine="easyocr")
 
-
-# ---------------------------------------------------------------------------
 # PaddleOCR backend — secondary engine (recognition-only, det=False)
-# ---------------------------------------------------------------------------
-
 def _paddle_read_strip(strip: np.ndarray, target_len: int) -> tuple[str, float]:
-    """Read one MRZ line strip with PaddleOCR recognition-only mode."""
     paddle = _get_paddle()
     strip = _upscale_strip(strip)
     raw = paddle.ocr(strip, det=False, cls=False)
@@ -254,9 +189,7 @@ def _paddle_read_strip(strip: np.ndarray, target_len: int) -> tuple[str, float]:
     best_text, best_conf = max(raw[0], key=lambda x: x[1])
     return _snap(_clean_text(best_text), target_len), float(best_conf)
 
-
 def _run_paddle(image: np.ndarray, n_lines: int = 2) -> OcrResult:
-    """Run PaddleOCR over CV-detected line strips (no Paddle detection pass)."""
     target_len = 30 if n_lines >= 3 else 44
     line_ys = _detect_line_ys_cv(image, n_lines)   # CV, not Paddle det
     strips = _extract_strips(image, line_ys)
@@ -268,18 +201,8 @@ def _run_paddle(image: np.ndarray, n_lines: int = 2) -> OcrResult:
         lines.append(OcrLine(text=text, confidence=conf))
     return OcrResult(lines=lines, engine="paddleocr")
 
-
-# ---------------------------------------------------------------------------
 # Public API
-# ---------------------------------------------------------------------------
-
 def run_ocr(image: np.ndarray, n_lines: int = 2) -> list[OcrResult]:
-    """Run EasyOCR (primary) and PaddleOCR (secondary) on one candidate image.
-
-    Returns a list with up to 2 OcrResult objects — one per engine.
-    Both results are fed into reconstruct.column_vote() for character-level
-    majority voting.
-    """
     results: list[OcrResult] = []
 
     # --- EasyOCR (GPU, primary) ---
@@ -297,10 +220,10 @@ def run_ocr(image: np.ndarray, n_lines: int = 2) -> list[OcrResult]:
 
     return results
 
-
 def run_ocr_multi(images: list[np.ndarray]) -> list[OcrResult]:
-    """Run run_ocr() on every candidate image and collect all OcrResults."""
     results: list[OcrResult] = []
     for img in images:
         results.extend(run_ocr(img))
     return results
+
+

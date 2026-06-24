@@ -1,7 +1,4 @@
-"""ICAO 9303 MRZ parsing: check digits, TD1/TD2/TD3 field slicing, and check-digit self-repair."""
-
 from __future__ import annotations
-
 import datetime as _dt
 import itertools
 from dataclasses import dataclass, field
@@ -24,9 +21,7 @@ CONFUSION_PAIRS = [
     ("6", "G"),
 ]
 
-
 def char_value(c: str) -> int:
-    """ICAO value: digits -> their int, A-Z -> 10..35, '<' -> 0."""
     if c == "<":
         return 0
     if c.isdigit():
@@ -35,18 +30,14 @@ def char_value(c: str) -> int:
         return ord(c) - ord("A") + 10
     raise ValueError(f"Invalid MRZ character: {c!r}")
 
-
 def check_digit(data: str) -> str:
-    """Compute the ICAO 9303 check digit for a field using the 7-3-1 weight cycle."""
     weights = (7, 3, 1)
     total = 0
     for i, c in enumerate(data):
         total += char_value(c) * weights[i % 3]
     return str(total % 10)
 
-
 def check_digit_valid(data: str, expected: str) -> bool:
-    """True if the computed check digit matches the expected character."""
     if expected == "<":
         # A '<' in a check-digit slot is treated as 0 per common practice.
         expected = "0"
@@ -54,13 +45,7 @@ def check_digit_valid(data: str, expected: str) -> bool:
         return False
     return check_digit(data) == expected
 
-
 def _repair_field(data: str, expected_cd: str) -> Optional[str]:
-    """Try OCR-confusion swaps within `data` so its check digit matches `expected_cd`.
-
-    Returns the corrected field string, or None if no candidate passes.
-    Tries single-character swaps first, then pairs for short fields.
-    """
     if check_digit_valid(data, expected_cd):
         return data
 
@@ -101,9 +86,7 @@ def _repair_field(data: str, expected_cd: str) -> Optional[str]:
 
     return None
 
-
 def parse_date(yymmdd: str, *, is_birth: bool) -> Optional[str]:
-    """Convert YYMMDD to ISO date string, resolving century with a pivot. None if invalid."""
     if len(yymmdd) != 6 or not yymmdd.isdigit():
         return None
     yy, mm, dd = int(yymmdd[:2]), int(yymmdd[2:4]), int(yymmdd[4:6])
@@ -119,9 +102,7 @@ def parse_date(yymmdd: str, *, is_birth: bool) -> Optional[str]:
     except ValueError:
         return None
 
-
 def parse_name(name_field: str) -> tuple[str, str]:
-    """Split a name field on '<<' into (surname, given_names), '<' -> space."""
     parts = name_field.split("<<", 1)
     surname = parts[0].replace("<", " ").strip()
     given = ""
@@ -130,7 +111,6 @@ def parse_name(name_field: str) -> tuple[str, str]:
     given = " ".join(given.split())
     surname = " ".join(surname.split())
     return surname, given
-
 
 @dataclass
 class MRZResult:
@@ -149,14 +129,7 @@ class MRZResult:
     validation: dict = field(default_factory=dict)
     auto_repaired_fields: list[str] = field(default_factory=list)
 
-
-def _validate_and_repair(
-    value: str, expected_cd: str, field_name: str, repaired: list[str]
-) -> tuple[str, bool]:
-    """Validate value against its check digit; attempt repair on failure.
-
-    Returns (possibly-repaired value, valid flag).
-    """
+def _validate_and_repair(value: str, expected_cd: str, field_name: str, repaired: list[str]) -> tuple[str, bool]:
     if check_digit_valid(value, expected_cd):
         return value, True
     fixed = _repair_field(value, expected_cd)
@@ -165,9 +138,7 @@ def _validate_and_repair(
         return fixed, True
     return value, False
 
-
 def parse_td3(line1: str, line2: str) -> MRZResult:
-    """Parse a TD3 (passport) MRZ: two lines of 44 characters."""
     line1 = line1.ljust(44, "<")[:44]
     line2 = line2.ljust(44, "<")[:44]
     repaired: list[str] = []
@@ -224,9 +195,7 @@ def parse_td3(line1: str, line2: str) -> MRZResult:
         auto_repaired_fields=repaired,
     )
 
-
 def parse_td2(line1: str, line2: str) -> MRZResult:
-    """Parse a TD2 MRZ: two lines of 36 characters."""
     line1 = line1.ljust(36, "<")[:36]
     line2 = line2.ljust(36, "<")[:36]
     repaired: list[str] = []
@@ -275,9 +244,7 @@ def parse_td2(line1: str, line2: str) -> MRZResult:
         auto_repaired_fields=repaired,
     )
 
-
 def parse_td1(line1: str, line2: str, line3: str) -> MRZResult:
-    """Parse a TD1 (ID card) MRZ: three lines of 30 characters."""
     line1 = line1.ljust(30, "<")[:30]
     line2 = line2.ljust(30, "<")[:30]
     line3 = line3.ljust(30, "<")[:30]
@@ -329,9 +296,7 @@ def parse_td1(line1: str, line2: str, line3: str) -> MRZResult:
         auto_repaired_fields=repaired,
     )
 
-
 def parse_mrz(lines: list[str]) -> Optional[MRZResult]:
-    """Dispatch to the right parser based on line count and length."""
     lines = [l.strip().upper() for l in lines if l.strip()]
     if len(lines) == 2:
         avg = (len(lines[0]) + len(lines[1])) / 2
@@ -341,3 +306,4 @@ def parse_mrz(lines: list[str]) -> Optional[MRZResult]:
     if len(lines) == 3:
         return parse_td1(lines[0], lines[1], lines[2])
     return None
+

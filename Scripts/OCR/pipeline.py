@@ -1,12 +1,4 @@
-"""MRZ pipeline: detect -> preprocess -> OCR -> reconstruct -> parse -> JSON.
-
-Entry points:
-  process_image(path_or_array) -> dict
-  run_camera(camera_index)     -> dict  (live loop, returns once validated)
-"""
-
 from __future__ import annotations
-
 import argparse
 import json
 import sys
@@ -14,17 +6,14 @@ import time
 from collections import deque
 from pathlib import Path
 from typing import Optional, Union
-
 import cv2
 import numpy as np
-
 from .detect import detect_mrz, Detection
 from .mrz_parse import parse_mrz, MRZResult
 from .ocr import run_ocr_multi, OcrResult
 from .preprocess import preprocess
 from .reconstruct import reconstruct, column_vote, ReconstructedMRZ
 from .schema import build_output, failure_output, to_json
-
 
 def _is_validated(result: MRZResult) -> bool:
     v = result.validation
@@ -35,18 +24,11 @@ def _is_validated(result: MRZResult) -> bool:
         v.get("composite_valid", True),
     ])
 
-
 def _process_frame(
     image: np.ndarray,
     weights: Optional[Path] = None,
     conf_threshold: float = 0.5,
 ) -> tuple[Optional[dict], Optional[Detection], Optional[ReconstructedMRZ]]:
-    """Run the full still-image pipeline on one frame.
-
-    Returns (output_dict_or_None, detection, reconstructed_mrz).
-    output_dict is None when detection fails; reconstructed_mrz may be present even
-    when parsing fails (for voting across frames).
-    """
     detection = detect_mrz(image, weights=weights, conf_threshold=conf_threshold)
     if detection is None:
         return None, None, None
@@ -104,19 +86,12 @@ def _process_frame(
     )
     return output, detection, reconstructed
 
-
 def process_image(
     source: Union[str, Path, np.ndarray],
     weights: Optional[Path] = None,
     conf_threshold: float = 0.5,
     output_dir: Optional[Union[str, Path]] = None,
 ) -> dict:
-    """Process a single still image. Returns a JSON-ready dict.
-
-    If output_dir is given, saves:
-      <output_dir>/<stem>_ocr.json       — parsed JSON result
-      <output_dir>/<stem>_annotated.jpg  — image with MRZ bounding box drawn
-    """
     if isinstance(source, np.ndarray):
         image = source
         stem = "frame"
@@ -162,7 +137,6 @@ def process_image(
     except Exception as exc:
         return failure_output(f"error: {exc}")
 
-
 def run_camera(
     camera_index: int = 0,
     weights: Optional[Path] = None,
@@ -171,14 +145,6 @@ def run_camera(
     max_vote_frames: int = 15,
     display: bool = True,
 ) -> dict:
-    """Live camera loop. Returns validated JSON once MRZ is confidently read.
-
-    Strategy (plan §5b):
-    1. Run YOLO on every frame.
-    2. Once MRZ is detected for `stable_frames` consecutive frames, start collecting.
-    3. Accept the first frame whose check digits fully pass.
-    4. If none pass within `max_vote_frames`, column-vote across collected frames and repair.
-    """
     cap = cv2.VideoCapture(camera_index, cv2.CAP_DSHOW)
     if not cap.isOpened():
         return failure_output(f"camera_open_failed (index={camera_index})")
@@ -248,12 +214,10 @@ def run_camera(
         return failure_output("no_mrz_detected")
     return result_out
 
-
 def _draw_overlay(frame: np.ndarray, detection: Detection, status: str) -> None:
     x1, y1, x2, y2 = detection.box
     cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
     cv2.putText(frame, status, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
-
 
 def _vote_and_parse(
     all_lines: list[list[str]],
@@ -261,7 +225,6 @@ def _vote_and_parse(
     last_detection: Detection,
     last_reconstructed: ReconstructedMRZ,
 ) -> dict:
-    """Column-wise vote across multiple frames then parse."""
     fmt = last_reconstructed.fmt
     line_len = last_reconstructed.line_length
     n_lines = len(last_reconstructed.lines)
@@ -282,8 +245,5 @@ def _vote_and_parse(
         ocr_confidence=0.0,
         raw_mrz=voted_lines,
     )
-
-
-
 
 

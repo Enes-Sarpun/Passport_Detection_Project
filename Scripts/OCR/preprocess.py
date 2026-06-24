@@ -1,11 +1,4 @@
-"""MRZ crop preprocessing: deskew, upscale, sharpen, CLAHE, binarize.
-
-Returns multiple candidate images — each is passed to run_ocr independently
-so reconstruct.column_vote() can merge the best character at every position.
-"""
-
 from __future__ import annotations
-
 import cv2
 import numpy as np
 
@@ -13,9 +6,7 @@ import numpy as np
 # OCR-B characters need ~64 px cap-height; 80 px gives comfortable margin.
 TARGET_LINE_HEIGHT = 80   # was 36 — too small for reliable OCR
 
-
 def crop(image: np.ndarray, box: tuple[int, int, int, int], pad_frac: float = 0.03) -> np.ndarray:
-    """Crop image to bounding box with percentage padding on all sides."""
     x1, y1, x2, y2 = box
     h, w = image.shape[:2]
     pad_y = max(1, int((y2 - y1) * pad_frac))
@@ -26,19 +17,12 @@ def crop(image: np.ndarray, box: tuple[int, int, int, int], pad_frac: float = 0.
     y2 = min(h, y2 + pad_y)
     return image[y1:y2, x1:x2].copy()
 
-
 def _to_gray(image: np.ndarray) -> np.ndarray:
     if image.ndim == 2:
         return image
     return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
-
 def deskew(gray: np.ndarray) -> np.ndarray:
-    """Rotate the crop so the MRZ text baseline is horizontal.
-
-    Only corrects small tilts (±10°). Larger rotations indicate a detection
-    problem, not a skew — returning the original is safer than a bad rotation.
-    """
     _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     # np.where returns (rows, cols) = (y, x); transpose to (x, y) for minAreaRect.
     yx = np.column_stack(np.where(binary > 0))
@@ -58,7 +42,6 @@ def deskew(gray: np.ndarray) -> np.ndarray:
 
 
 def upscale(gray: np.ndarray, n_lines: int = 2) -> np.ndarray:
-    """Upscale so each MRZ text line is ~TARGET_LINE_HEIGHT pixels tall."""
     h = gray.shape[0]
     line_h = h / max(n_lines, 1)
     if line_h >= TARGET_LINE_HEIGHT * 0.8:
@@ -70,16 +53,11 @@ def upscale(gray: np.ndarray, n_lines: int = 2) -> np.ndarray:
 
 
 def _clahe(gray: np.ndarray) -> np.ndarray:
-    """Apply CLAHE to equalise uneven lighting (common in scanned/photographed documents)."""
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     return clahe.apply(gray)
 
 
 def _sharpen(gray: np.ndarray) -> np.ndarray:
-    """Unsharp mask — sharpens OCR-B character edges for cleaner binarisation.
-
-    This is especially effective for slightly blurred camera or scanner crops.
-    """
     blurred = cv2.GaussianBlur(gray, (0, 0), sigmaX=1.5)
     return cv2.addWeighted(gray, 1.8, blurred, -0.8, 0)
 
@@ -90,7 +68,6 @@ def _otsu(gray: np.ndarray) -> np.ndarray:
 
 
 def _adaptive(gray: np.ndarray) -> np.ndarray:
-    """Adaptive threshold — handles watermarks and uneven lighting better than Otsu."""
     denoised = cv2.bilateralFilter(gray, 9, 75, 75)
     bw = cv2.adaptiveThreshold(denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                 cv2.THRESH_BINARY, 31, 10)
@@ -98,13 +75,6 @@ def _adaptive(gray: np.ndarray) -> np.ndarray:
 
 
 def _mark_filler_columns(binary: np.ndarray, n_lines: int) -> np.ndarray:
-    """Draw a thin vertical mark in pixel columns that are completely blank.
-
-    MRZ uses OCR-B monospace font; the '<' filler glyph is nearly empty in
-    binarized images, causing PaddleOCR to skip it entirely. Adding a small
-    ink mark in those columns makes PaddleOCR produce a segment there, which
-    the gap-fill logic in ocr.py then converts back to '<'.
-    """
     marked = binary.copy()
     h, w = binary.shape
 
@@ -135,25 +105,8 @@ def _mark_filler_columns(binary: np.ndarray, n_lines: int) -> np.ndarray:
 
     return marked
 
-
-def preprocess(
-    image: np.ndarray,
-    box: tuple[int, int, int, int],
-    n_lines: int = 2,
-    *,
-    do_deskew: bool = True,
-    do_upscale: bool = True,
-    do_clahe: bool = True,
-) -> list[np.ndarray]:
-    """Full preprocessing pipeline.
-
-    Returns a list of candidate BGR images:
-      [otsu, adaptive, raw_gray_as_bgr, otsu_with_filler_marks]
-
-    Each candidate is passed to run_ocr() independently.
-    EasyOCR + PaddleOCR both run on each candidate → 8 OcrResult objects
-    total → column_vote() picks the best character at every position.
-    """
+def preprocess(image: np.ndarray,box: tuple[int, int, int, int],n_lines: int = 2,*,do_deskew: bool = True,do_upscale: bool = True,do_clahe: bool = True,) -> list[np.ndarray]:
+    
     cropped = crop(image, box)
     gray = _to_gray(cropped)
 
@@ -181,3 +134,6 @@ def preprocess(
     marked_bgr = cv2.cvtColor(cv2.bitwise_not(marked), cv2.COLOR_GRAY2BGR)
 
     return [otsu_img, adaptive_img, raw_bgr, marked_bgr]
+
+
+
