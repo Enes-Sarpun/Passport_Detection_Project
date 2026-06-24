@@ -2,7 +2,7 @@
 
 # 🛂 Passport-OCR-YOLO
 
-<video src="gif/PDSgif.mp4" autoplay loop muted playsinline width="80%"></video>
+[![Proje Demo](gif/sample_annotated.jpg)](gif/PDSgif.mp4)
 
 **YOLO ile MRZ tespiti · MRZ çözümleme · OCR ile yapılandırılmış JSON çıktısı**
 
