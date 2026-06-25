@@ -124,17 +124,23 @@ class ReconstructedMRZ:
 # Candidates below this threshold produce mostly noise and drag down the vote.
 _MIN_VOTE_CONFIDENCE = 0.15
 
-def _validation_score(lines: list[str]) -> float:
+def _validation_score(lines: list[str]) -> tuple[int, float, float]:
+    """Return (cd_passes, composite_bonus, density) for candidate ranking.
+
+    Returns a 3-tuple so callers can sort lexicographically:
+      - cd_passes: number of non-repaired, non-trivial check digits that passed (integer, primary)
+      - composite_bonus: 1.0 if composite check digit passed, else 0.0 (secondary)
+      - density: fraction of non-filler characters (tiebreak)
+    """
     if not lines:
-        return 0.0
+        return (0, 0.0, 0.0)
     total_chars = sum(len(l) for l in lines)
     non_filler = sum(c != "<" for l in lines for c in l)
     if total_chars == 0:
-        return 0.0
+        return (0, 0.0, 0.0)
     density = non_filler / total_chars
-    # Exclude near-empty results — they trivially pass check digits.
     if density < 0.15:
-        return 0.0
+        return (0, 0.0, density)
     try:
         from .mrz_parse import parse_mrz
         result = parse_mrz(lines)
@@ -142,13 +148,12 @@ def _validation_score(lines: list[str]) -> float:
         composite_passed = False
         if result is not None:
             repaired = set(result.auto_repaired_fields)
-            # field name → the actual value that was validated
             meaningful_fields = {
                 "document_number_valid": result.document_number,
                 "date_of_birth_valid": result.birth_date_raw,
                 "date_of_expiry_valid": result.expiry_date_raw,
                 "personal_number_valid": result.personal_number,
-                "composite_valid": None,  # composite covers the whole line 2
+                "composite_valid": None,
             }
             field_to_repair_key = {
                 "document_number_valid": "document_number",
@@ -162,22 +167,18 @@ def _validation_score(lines: list[str]) -> float:
                 if val is not True:
                     continue
                 repair_key = field_to_repair_key[key]
-                # Skip if repaired from garbage.
                 if repair_key in repaired:
                     continue
-                # Skip if the field value is all-filler — trivially passes but
-                # carries no information (OCR just read nothing there).
                 if value is not None and value.replace("<", "") == "":
                     continue
                 cd_passes += 1
                 if key == "composite_valid":
                     composite_passed = True
 
-        # Composite check digit covers all of line 2 and is the strongest signal, of a correctly-read MRZ.  Reward it with a large bonus; candidates that, fail composite almost certainly have wrong alignment or garbage OCR.
-        composite_bonus = 20.0 if composite_passed else 0.0
-        return cd_passes * 10.0 + density * 5.0 + composite_bonus
+        composite_bonus = 1.0 if composite_passed else 0.0
+        return (cd_passes, composite_bonus, density)
     except Exception:
-        return density * 5.0
+        return (0, 0.0, density)
 
 
 def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
@@ -198,9 +199,8 @@ def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
     fmt, line_len = detect_format(raw_lines)
     n_lines = {"TD1": 3, "TD2": 2, "TD3": 2}[fmt]
 
-    # Per-candidate alignment & validation scoring 
-    # For 2-line formats (TD3/TD2) we use check-digit-aware line2 alignment, try all plausible offsets and pick the one that maximises validation passes.
-    # This prevents OCR engines that read past the MRZ boundary from landing on, a wrong offset that happens to pass a check digit by coincidence.
+    # Per-candidate alignment & validation scoring.
+    # For 2-line formats we use check-digit-aware line2 alignment to find the correct offset.
     scored: list[tuple[float, float, list[str]]] = []
     for ocr_r in usable:
         extracted = _extract_lines(ocr_r, n_lines)
@@ -209,10 +209,12 @@ def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
             aligned = [line1, line2]
         else:
             aligned = [_align_line(extracted[i], line_len, i) for i in range(n_lines)]
-        vscore = _validation_score(aligned)
-        # Composite ranking: OCR confidence (primary) + structural validation (secondary).
-        # Vscore uses a 0.3 multiplier so that a high-confidence clean read (paddle_det, at 0.86) beats a low-confidence read that happens to pass more check digits, by coincidence. The 10× confidence weight reflects that engine confidence
-        # is calibrated and reliable, while check-digit coincidences are common in, garbled OCR output.
+        cd_passes, composite_bonus, density = _validation_score(aligned)
+        # Composite ranking: OCR confidence (primary, proven reliable) +
+        # check-digit count and composite bonus as secondary signals.
+        # cd_passes * 0.3 ensures a 1-pass improvement (~0.3) can only override
+        # an OCR confidence gap of 0.03 — meaningful signal, not noise.
+        vscore = cd_passes * 1.0 + composite_bonus * 2.0 + density * 0.5
         composite = vscore * 0.3 + ocr_r.mean_confidence * 10.0
         scored.append((composite, ocr_r.mean_confidence, aligned))
 

@@ -45,6 +45,24 @@ def check_digit_valid(data: str, expected: str) -> bool:
         return False
     return check_digit(data) == expected
 
+_DIGIT_TO_LETTER: dict[str, str] = {"0": "O", "1": "I", "5": "S", "8": "B", "2": "Z", "6": "G", "3": "E", "4": "A"}
+_LETTER_TO_DIGIT: dict[str, str] = {"O": "0", "I": "1", "S": "5", "B": "8", "Z": "2", "G": "6", "D": "0", "Q": "0", "L": "1"}
+
+
+def _apply_class_constraints(data: str, field_type: str) -> str:
+    """Apply positional character-class constraints before check-digit repair.
+
+    date/check-digit fields must be all-digits; country codes must be all-letters.
+    These fixes cover the majority of OCR errors for free before the expensive
+    confusion-table search runs.
+    """
+    if field_type == "digits":
+        return "".join(_LETTER_TO_DIGIT.get(c, c) if not c.isdigit() and c != "<" else c for c in data)
+    if field_type == "letters":
+        return "".join(_DIGIT_TO_LETTER.get(c, c) if c.isdigit() else c for c in data)
+    return data
+
+
 def _repair_field(data: str, expected_cd: str) -> Optional[str]:
     if check_digit_valid(data, expected_cd):
         return data
@@ -207,6 +225,15 @@ def _structural_checks(
     }
 
 
+_STOP_WORDS = {"SPECIMEN", "MUSTERMANN", "MUSTER", "SAMPLE", "TEST", "EXAMPLE"}
+
+
+def check_stop_words(surname: str, given_names: str) -> bool:
+    """Return True if the name contains specimen/test stop-words."""
+    tokens = set((surname + " " + given_names).upper().split())
+    return bool(tokens & _STOP_WORDS)
+
+
 def _build_validation(
     fmt: str,
     lines: list[str],
@@ -269,7 +296,13 @@ class MRZResult:
 def _validate_and_repair(value: str, expected_cd: str, field_name: str, repaired: list[str]) -> tuple[str, bool]:
     if check_digit_valid(value, expected_cd):
         return value, True
-    fixed = _repair_field(value, expected_cd)
+    # Apply positional class constraints first (free fix, no search needed).
+    constrained = _apply_class_constraints(value, "digits")
+    if constrained != value and check_digit_valid(constrained, expected_cd):
+        repaired.append(field_name)
+        return constrained, True
+    # Fall back to confusion-table search.
+    fixed = _repair_field(constrained, expected_cd)
     if fixed is not None:
         repaired.append(field_name)
         return fixed, True
@@ -278,6 +311,13 @@ def _validate_and_repair(value: str, expected_cd: str, field_name: str, repaired
 def _repair_alpha3(code: str, field_name: str, repaired: list[str]) -> str:
     if not any(c.isdigit() for c in code):
         return code
+    # First try positional class constraints (digit→letter map).
+    constrained = _apply_class_constraints(code, "letters")
+    if constrained != code:
+        from .country_lookup import resolve_country as _rc2
+        if _rc2(constrained)["name"] != "Unknown":
+            repaired.append(field_name)
+            return constrained
     fixed = _repair_country_digits(code)
     if fixed != code:
         repaired.append(field_name)

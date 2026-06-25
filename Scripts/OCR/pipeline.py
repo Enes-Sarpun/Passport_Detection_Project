@@ -36,37 +36,40 @@ def _process_frame(
     candidates = preprocess(image, detection.box, n_lines=2)
     ocr_results: list[OcrResult] = run_ocr_multi(candidates)
 
-    # Score each OcrResult individually by how many check digits pass after parse.
-    # This lets a lower-confidence-but-accurate engine win over a high-confidence, engine that produces plausible-looking but wrong characters.
-    # NOTE: we normalize text before parse to match what reconstruct() does.
-    from .reconstruct import _align_line, TD3_LEN, TD3_LINES
-    def _validation_score(ocr_r: OcrResult) -> int:
-        if not ocr_r.lines:
-            return -1
-        lines = [_align_line(l.text, TD3_LEN, i) for i, l in enumerate(ocr_r.lines)]
-        parsed_try = parse_mrz(lines)
-        if parsed_try is None:
-            return -1
-        v = parsed_try.validation
-        return sum(1 for k, val in v.items() if val is True)
+    from .reconstruct import _align_line, TD3_LEN, _validation_score as _vs
 
-    # Build column-voted reconstruction from ALL candidates (primary path).
+    def _cd_count(lines: list[str]) -> int:
+        cd_passes, _, _ = _vs(lines)
+        return cd_passes
+
+    # Build reconstruction from all candidates.
     reconstructed = reconstruct(ocr_results)
 
-    # Also score individual OcrResults as a secondary path.
-    best_single = max(ocr_results, key=_validation_score, default=None)
-    best_score = _validation_score(best_single) if best_single else -1
-
-    # Always use the reconstructed lines for output — they have been aligned and voted.
-    # Only fall back to best_single's raw text if reconstruct fails to produce lines.
-    if reconstructed.lines:
-        chosen_lines = reconstructed.lines
-        parsed = parse_mrz(chosen_lines)
-    else:
+    if not reconstructed.lines:
         return None, detection, None
 
-    if not chosen_lines:
-        return None, detection, reconstructed
+    # Check if reconstruction result passes more check digits than any individual engine.
+    # If an individual engine cleanly outscores the reconstruction, prefer it — this can
+    # happen when voting mixes incompatible line offsets and introduces character errors.
+    recon_cd = _cd_count(reconstructed.lines)
+    best_single_lines: Optional[list[str]] = None
+    best_single_cd = recon_cd
+
+    for ocr_r in ocr_results:
+        if not ocr_r.lines:
+            continue
+        lines = [_align_line(l.text, TD3_LEN, i) for i, l in enumerate(ocr_r.lines[:2])]
+        cd = _cd_count(lines)
+        if cd > best_single_cd:
+            best_single_cd = cd
+            best_single_lines = lines
+
+    if best_single_lines is not None:
+        chosen_lines = best_single_lines
+    else:
+        chosen_lines = reconstructed.lines
+
+    parsed = parse_mrz(chosen_lines)
 
     if parsed is None:
         result = failure_output("parse_failed", raw_mrz=chosen_lines, warnings=["mrz_format_invalid"])
@@ -137,7 +140,7 @@ def process_image(
                 annotated = image.copy()
                 x1, y1, x2, y2 = detection.box
                 cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                label = result.get("status", "")
+                label = f"MRZ {detection.confidence:.2f}"
                 cv2.putText(annotated, label, (x1, max(y1 - 8, 10)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
                 img_path = out / f"{stem}_annotated.jpg"

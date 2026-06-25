@@ -3,43 +3,35 @@ import datetime as _dt
 import json
 from typing import Any, Optional
 from .country_lookup import resolve_country
-from .mrz_parse import MRZResult
+from .mrz_parse import MRZResult, check_stop_words
 from .schema_helpers import _DOC_TYPE_MAP, _SEX_MAP
 
-def _date_field(raw: str, iso: Optional[str]) -> dict[str, str]:
-    return {"raw": raw, "iso": iso or ""}
+SCHEMA_VERSION = "5"
 
-_DOB_AMBIGUOUS_AGE_MAX = 100
-_DOB_AMBIGUOUS_AGE_MIN = 5
+# ---------------------------------------------------------------------------
+# Internal thresholds
+# ---------------------------------------------------------------------------
+_LOW_OCR_CONF = 0.60
+_LOW_DETECT_CONF = 0.50
+_RESCAN_THRESHOLD = 0.75
+_FIELD_CONF_THRESHOLD = 0.85
+_DOB_AGE_MIN = 5
+_DOB_AGE_MAX = 100
 
-def _is_dob_century_ambiguous(iso_dob: Optional[str]) -> bool:
-    if not iso_dob:
-        return False
-    try:
-        dob = _dt.date.fromisoformat(iso_dob)
-        today = _dt.date.today()
-        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-        return age < _DOB_AMBIGUOUS_AGE_MIN or age >= _DOB_AMBIGUOUS_AGE_MAX
-    except (ValueError, TypeError):
-        return False
+
+# ---------------------------------------------------------------------------
+# Small helpers
+# ---------------------------------------------------------------------------
 
 def _document_type_description(doc_type: str) -> str:
     return _DOC_TYPE_MAP.get(doc_type, "Unknown")
 
+
 def _sex_description(sex: str) -> str:
     return _SEX_MAP.get(sex.upper() if sex else "", "Unspecified")
 
-_LOW_OCR_CONF_THRESHOLD = 0.60
-_LOW_DETECTION_CONF_THRESHOLD = 0.50
-_LOW_OVERALL_THRESHOLD = 0.75
-_FIELD_CONF_THRESHOLD = 0.85
 
-
-def _field_confidence(
-    ocr_c: float,
-    checkdigit_valid: Optional[bool],
-    repaired: bool,
-) -> float:
+def _field_confidence(ocr_c: float, checkdigit_valid: Optional[bool], repaired: bool) -> float:
     if checkdigit_valid is None:
         return round(float(ocr_c), 2)
     if checkdigit_valid and not repaired:
@@ -49,34 +41,107 @@ def _field_confidence(
     return round(min(float(ocr_c), 0.40), 2)
 
 
+def _is_dob_century_ambiguous(iso_dob: Optional[str]) -> bool:
+    if not iso_dob:
+        return False
+    try:
+        dob = _dt.date.fromisoformat(iso_dob)
+        today = _dt.date.today()
+        age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        return age < _DOB_AGE_MIN or age >= _DOB_AGE_MAX
+    except (ValueError, TypeError):
+        return False
+
+
+def _compute_age(iso_date: Optional[str]) -> Optional[int]:
+    if not iso_date:
+        return None
+    try:
+        d = _dt.date.fromisoformat(iso_date)
+        today = _dt.date.today()
+        return today.year - d.year - ((today.month, today.day) < (d.month, d.day))
+    except ValueError:
+        return None
+
+
+def _days_until_expiry(iso_expiry: Optional[str]) -> Optional[int]:
+    if not iso_expiry:
+        return None
+    try:
+        exp = _dt.date.fromisoformat(iso_expiry)
+        return (exp - _dt.date.today()).days
+    except ValueError:
+        return None
+
+
+def _validity_period_years(iso_dob: Optional[str], iso_expiry: Optional[str]) -> Optional[int]:
+    """Approximate validity window from DOB to expiry (passport standard is 10y from issue,
+    but MRZ carries no issue date — we expose null rather than guess."""
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Reliability score (J4)
+# weights: 0.45 cd_fraction + 0.25 structural + 0.20 ocr_conf + 0.10 detect_conf
+# ---------------------------------------------------------------------------
+
+def _reliability_score(
+    cd_fraction: float,
+    structural_fraction: float,
+    mean_ocr_conf: float,
+    detection_conf: float,
+    is_specimen: bool,
+    zero_docnum: bool,
+    is_expired: bool,
+) -> float:
+    score = (
+        0.45 * cd_fraction
+        + 0.25 * structural_fraction
+        + 0.20 * mean_ocr_conf
+        + 0.10 * float(detection_conf)
+    )
+    if is_specimen:
+        score -= 0.20
+    if zero_docnum:
+        score -= 0.10
+    if is_expired:
+        score -= 0.05
+    return round(max(0.0, min(1.0, score)), 2)
+
+
+# ---------------------------------------------------------------------------
+# Main builder
+# ---------------------------------------------------------------------------
+
 def build_output(
     result: MRZResult,
     detection_confidence: float = 0.0,
     ocr_confidence: float = 0.0,
     raw_mrz: Optional[list[str]] = None,
     extra_warnings: Optional[list[str]] = None,
+    mrz_format: str = "TD3",
 ) -> dict[str, Any]:
+
     checks = result.validation
     repaired_set = set(result.auto_repaired_fields)
     ocr_c = float(ocr_confidence)
+    det_c = float(detection_confidence)
 
+    # ── per-field confidences ──────────────────────────────────────────────
     field_confs = {
         "document_number": _field_confidence(
-            ocr_c, checks.get("document_number_valid"), "document_number" in repaired_set,
-        ),
+            ocr_c, checks.get("document_number_valid"), "document_number" in repaired_set),
         "date_of_birth": _field_confidence(
-            ocr_c, checks.get("date_of_birth_valid"), "date_of_birth" in repaired_set,
-        ),
+            ocr_c, checks.get("date_of_birth_valid"), "date_of_birth" in repaired_set),
         "date_of_expiry": _field_confidence(
-            ocr_c, checks.get("date_of_expiry_valid"), "date_of_expiry" in repaired_set,
-        ),
+            ocr_c, checks.get("date_of_expiry_valid"), "date_of_expiry" in repaired_set),
         "personal_number": _field_confidence(
-            ocr_c, checks.get("personal_number_valid"), "personal_number" in repaired_set,
-        ),
+            ocr_c, checks.get("personal_number_valid"), "personal_number" in repaired_set),
         "nationality": _field_confidence(ocr_c, None, "nationality" in repaired_set),
         "name": _field_confidence(ocr_c, None, "name" in repaired_set),
     }
 
+    # ── check-digit stats ──────────────────────────────────────────────────
     checkdigit_keys = {
         "document_number_valid", "date_of_birth_valid",
         "date_of_expiry_valid", "personal_number_valid", "composite_valid",
@@ -84,32 +149,59 @@ def build_output(
     passed_cd = sum(
         1 for k, v in checks.items()
         if k in checkdigit_keys and v is True
-        and k.replace("_valid", "").replace("_checkdigit", "") not in repaired_set
+        and k.replace("_valid", "") not in repaired_set
     )
     total_cd = len(checkdigit_keys)
     cd_fraction = passed_cd / total_cd
 
+    structural_keys = {
+        "line_length_valid", "dates_well_formed", "expiry_after_birth",
+        "country_codes_known", "sex_value_valid", "document_type_known",
+    }
+    passed_struct = sum(1 for k in structural_keys if checks.get(k) is True)
+    structural_fraction = passed_struct / len(structural_keys)
+
     mean_field_conf = sum(field_confs.values()) / len(field_confs)
 
-    overall = round(
-        0.2 * float(detection_confidence)
-        + 0.4 * mean_field_conf
-        + 0.4 * cd_fraction,
-        2,
+    # ── derived date values (J1) ───────────────────────────────────────────
+    today = _dt.date.today()
+    is_expired = False
+    days_until_exp: Optional[int] = None
+    if result.expiry_date_iso:
+        try:
+            exp_date = _dt.date.fromisoformat(result.expiry_date_iso)
+            days_until_exp = (exp_date - today).days
+            is_expired = exp_date < today
+        except ValueError:
+            pass
+
+    age = _compute_age(result.birth_date_iso)
+
+    # ── specimen / zero-number flags (J3) ──────────────────────────────────
+    is_specimen = check_stop_words(result.surname, result.given_names)
+    doc_number_clean = result.document_number.replace("<", "")
+    zero_docnum = bool(doc_number_clean) and all(c == "0" for c in doc_number_clean)
+
+    # ── reliability score (J4) ─────────────────────────────────────────────
+    rel_score = _reliability_score(
+        cd_fraction, structural_fraction, mean_field_conf, det_c,
+        is_specimen, zero_docnum, is_expired,
+    )
+    rescan_recommended = (
+        rel_score < _RESCAN_THRESHOLD
+        or any(checks.get(k) is False for k in checkdigit_keys)
+        or checks.get("line_length_valid") is False
     )
 
-    sex_raw = result.sex or ""
-    sex_desc = _sex_description(sex_raw)
-    doc_type_desc = _document_type_description(result.document_type)
-
+    # ── warnings ───────────────────────────────────────────────────────────
     warnings: list[str] = list(extra_warnings or [])
 
-    if 0 < float(detection_confidence) < _LOW_DETECTION_CONF_THRESHOLD:
+    if 0 < det_c < _LOW_DETECT_CONF:
         warnings.append("low_detection_confidence")
-
-    if 0 < ocr_c < _LOW_OCR_CONF_THRESHOLD:
+    if 0 < ocr_c < _LOW_OCR_CONF:
         warnings.append("low_ocr_confidence")
 
+    # name separator
     name_separator_missing = False
     if raw_mrz:
         line1 = raw_mrz[0] if raw_mrz else ""
@@ -118,17 +210,13 @@ def build_output(
             name_separator_missing = True
     elif not result.given_names and result.surname:
         name_separator_missing = True
-
     if name_separator_missing:
         warnings.append("name_separator_missing")
 
-    for field_key, valid in checks.items():
-        if field_key in ("auto_repaired_fields", "mrz_overall_valid", "failed_checks"):
-            continue
-        if field_key not in checkdigit_keys:
-            continue
-        if valid is False:
-            warnings.append(f"checkdigit_failed:{field_key.replace('_valid', '')}")
+    # check digit failures
+    for k in checkdigit_keys:
+        if checks.get(k) is False:
+            warnings.append(f"checkdigit_failed:{k.replace('_valid', '')}")
 
     if not checks.get("line_length_valid", True):
         warnings.append("line_length_invalid")
@@ -137,75 +225,87 @@ def build_output(
     if not checks.get("expiry_after_birth", True):
         warnings.append("expiry_before_birth")
 
-    if resolve_country(result.issuing_country)["name"] == "Unknown":
-        warnings.append("issuing_country_unresolved")
-    if resolve_country(result.nationality)["name"] == "Unknown":
-        warnings.append("nationality_code_unresolved")
+    issuing = resolve_country(result.issuing_country)
+    nat = resolve_country(result.nationality)
 
-    if doc_type_desc == "Unknown":
+    if issuing["name"] == "Unknown":
+        warnings.append("issuing_country_unresolved")
+    if nat["name"] == "Unknown":
+        warnings.append("nationality_code_unresolved")
+    if _document_type_description(result.document_type) == "Unknown":
         warnings.append("unknown_document_type")
 
+    sex_raw = result.sex or ""
     if sex_raw and sex_raw not in _SEX_MAP:
         warnings.append("sex_unrecognized")
-
     if not result.birth_date_iso:
         warnings.append("dob_unparseable")
-
     if _is_dob_century_ambiguous(result.birth_date_iso):
         warnings.append("dob_century_ambiguous")
 
-    if raw_mrz:
-        line1 = raw_mrz[0] if raw_mrz else ""
+    # name token quality
+    if raw_mrz and not name_separator_missing:
+        line1 = raw_mrz[0]
         name_field = line1[5:] if len(line1) >= 5 else ""
-        if not name_separator_missing:
-            parts = name_field.split("<<")
-            for part in parts:
-                tokens = [t for t in part.rstrip("<").split("<") if t]
-                if any(len(t) <= 2 for t in tokens) and len(tokens) > 1:
-                    warnings.append("name_low_confidence")
-                    break
+        for part in name_field.split("<<"):
+            tokens = [t for t in part.rstrip("<").split("<") if t]
+            if any(len(t) <= 2 for t in tokens) and len(tokens) > 1:
+                warnings.append("name_low_confidence")
+                break
 
-    if result.expiry_date_iso:
-        try:
-            expiry = _dt.date.fromisoformat(result.expiry_date_iso)
-            if expiry < _dt.date.today():
-                warnings.append("document_expired")
-        except ValueError:
-            pass
+    if is_expired:
+        warnings.append("document_expired")
+    if days_until_exp is not None and not is_expired and days_until_exp > 365 * 10:
+        warnings.append("expiry_more_than_10y")
+    if is_specimen:
+        warnings.append("specimen_or_test_document")
+    if zero_docnum:
+        warnings.append("zero_document_number")
+
+    # nationality ≠ issuer (soft flag, J2)
+    if (result.nationality and result.issuing_country
+            and result.nationality != result.issuing_country
+            and nat["name"] != "Unknown" and issuing["name"] != "Unknown"):
+        warnings.append("nationality_differs_from_issuer")
 
     for fname, fc in field_confs.items():
         if fc < _FIELD_CONF_THRESHOLD and fname != "name":
             warnings.append(f"{fname}_low_confidence")
 
-    status = "ok"
-    if overall < _LOW_OVERALL_THRESHOLD:
-        status = "low_confidence"
-        if "low_confidence" not in warnings:
-            warnings.append("low_confidence")
+    # ── validation summary (detailed per-check list intentionally omitted) ──
+    all_checks = {
+        "document_number_checkdigit": checks.get("document_number_valid"),
+        "date_of_birth_checkdigit":   checks.get("date_of_birth_valid"),
+        "date_of_expiry_checkdigit":  checks.get("date_of_expiry_valid"),
+        "personal_number_checkdigit": checks.get("personal_number_valid"),
+        "composite_checkdigit":       checks.get("composite_valid"),
+        "line_length":                checks.get("line_length_valid"),
+        "dates_well_formed":          checks.get("dates_well_formed"),
+        "expiry_after_birth":         checks.get("expiry_after_birth"),
+        "country_codes_known":        checks.get("country_codes_known"),
+        "sex_value_valid":            checks.get("sex_value_valid"),
+        "document_type_known":        checks.get("document_type_known"),
+    }
+    failed_checks = [k for k, v in all_checks.items() if v is False]
+    mrz_overall_valid = len(failed_checks) == 0
 
+    # clean auto_repaired list (exclude phantom document_type repairs)
     clean_repaired = [f for f in result.auto_repaired_fields if f != "document_type"]
     if "document_type" in result.auto_repaired_fields:
         raw_doc_type_char = (raw_mrz[0][0:2] if raw_mrz and raw_mrz[0] else "")
         if raw_doc_type_char and raw_doc_type_char[1] != "<":
             clean_repaired.append("document_type")
 
-    # Validation checks
-    validation_checks = {
-        "document_number_checkdigit": checks.get("document_number_valid"),
-        "date_of_birth_checkdigit": checks.get("date_of_birth_valid"),
-        "date_of_expiry_checkdigit": checks.get("date_of_expiry_valid"),
-        "personal_number_checkdigit": checks.get("personal_number_valid"),
-        "composite_checkdigit": checks.get("composite_valid"),
-        "line_length": checks.get("line_length_valid"),
-        "dates_well_formed": checks.get("dates_well_formed"),
-        "expiry_after_birth": checks.get("expiry_after_birth"),
-        "country_codes_known": checks.get("country_codes_known"),
-        "sex_value_valid": checks.get("sex_value_valid"),
-        "document_type_known": checks.get("document_type_known"),
-    }
+    # ── status ─────────────────────────────────────────────────────────────
+    status = "ok"
+    if rel_score < _RESCAN_THRESHOLD:
+        status = "low_confidence"
+        if "low_confidence" not in warnings:
+            warnings.append("low_confidence")
 
-    issuing = resolve_country(result.issuing_country)
-    nat = resolve_country(result.nationality)
+    # ── assemble output (Phase 5 schema) ───────────────────────────────────
+    doc_type_desc = _document_type_description(result.document_type)
+    sex_desc = _sex_description(sex_raw)
 
     out: dict[str, Any] = {}
     if status != "ok":
@@ -213,17 +313,24 @@ def build_output(
 
     out.update({
         "document": {
-            "type_code": result.document_type,
-            "type_description": doc_type_desc,
+            "type": {
+                "code": result.document_type,
+                "description": doc_type_desc,
+            },
             "number": {
                 "value": result.document_number,
                 "confidence": field_confs["document_number"],
             },
-            "issuing_country": issuing["name"],
             "personal_number": {
                 "value": result.personal_number if result.personal_number else "00000000000",
                 "confidence": field_confs["personal_number"],
             },
+            "issuing_country": {
+                "code": result.issuing_country,
+                "name": issuing["name"],
+                "confidence": round(field_confs["nationality"], 2),
+            },
+            "mrz_format": mrz_format,
         },
 
         "holder": {
@@ -235,13 +342,17 @@ def build_output(
                 "value": result.given_names,
                 "confidence": round(field_confs["name"], 2),
             },
+            "given_names_list": (
+                result.name_dict.get("given_names_list", []) if result.name_dict else []
+            ),
             "full_name": (
                 result.name_dict.get("full_name") if result.name_dict
                 else f"{result.given_names} {result.surname}".strip()
             ),
             "nationality": {
+                "code": result.nationality,
                 "name": nat["name"],
-                "confidence": field_confs["nationality"],
+                "confidence": round(field_confs["nationality"], 2),
             },
             "sex": {
                 "code": sex_raw,
@@ -252,24 +363,39 @@ def build_output(
 
         "dates": {
             "date_of_birth": {
-                **_date_field(result.birth_date_raw, result.birth_date_iso),
+                "raw": result.birth_date_raw,
+                "iso": result.birth_date_iso or "",
                 "confidence": field_confs["date_of_birth"],
             },
             "date_of_expiry": {
-                **_date_field(result.expiry_date_raw, result.expiry_date_iso),
+                "raw": result.expiry_date_raw,
+                "iso": result.expiry_date_iso or "",
                 "confidence": field_confs["date_of_expiry"],
             },
+            "age": age,
+            "is_expired": is_expired,
+            "days_until_expiry": days_until_exp,
+            "validity_period_years": _validity_period_years(
+                result.birth_date_iso, result.expiry_date_iso),
         },
 
-        "confidence": {
-            "detection": round(float(detection_confidence), 2),
-            "ocr_mean": round(ocr_c, 2),
-            "overall": overall,
+        "validation": {
+            "mrz_overall_valid": mrz_overall_valid,
+            "failed_checks": failed_checks,
+            "auto_repaired_fields": clean_repaired,
+        },
+
+        "quality": {
+            "reliability_score": rel_score,
+            "rescan_recommended": rescan_recommended,
         },
 
         "warnings": warnings,
-        "raw_mrz": raw_mrz or [],
     })
+
+    if is_specimen:
+        out["quality"]["is_specimen"] = True
+
     return out
 
 
@@ -278,7 +404,11 @@ def failure_output(
     raw_mrz: Optional[list[str]] = None,
     warnings: Optional[list[str]] = None,
 ) -> dict[str, Any]:
-    return {"status": status, "warnings": warnings or [], "raw_mrz": raw_mrz or []}
+    return {
+        "status": status,
+        "warnings": warnings or [],
+    }
+
 
 def to_json(data: dict[str, Any], indent: int = 2) -> str:
     return json.dumps(data, ensure_ascii=False, indent=indent)
