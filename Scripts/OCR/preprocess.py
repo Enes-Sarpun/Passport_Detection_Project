@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 
 # Each MRZ text line should be at least this tall after upscaling.
-# OCR-B characters need ~64 px cap-height; 80 px gives comfortable margin.
 TARGET_LINE_HEIGHT = 80   # was 36 — too small for reliable OCR
 
 def crop(image: np.ndarray, box: tuple[int, int, int, int], pad_frac: float = 0.03) -> np.ndarray:
@@ -100,7 +99,6 @@ def _suppress_guilloche(gray: np.ndarray, n_lines: int = 2) -> np.ndarray:
     h, w = gray.shape[:2]
 
     # Step 1: estimate background by blurring heavily.
-    # Kernel must be odd; choose ~1/8 of image width to span several pattern cycles.
     ksize = max(31, (w // 8) | 1)
     bg = cv2.GaussianBlur(gray, (ksize, ksize), 0)
 
@@ -178,19 +176,15 @@ def preprocess(image: np.ndarray, box: tuple[int, int, int, int], n_lines: int =
     if do_upscale:
         gray = upscale(gray, n_lines=n_lines)
 
-    # --- Standard candidates (always produced) ---
     otsu_img = _otsu(gray)
     adaptive_img = _adaptive(gray)
     raw_bgr = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
-    # 4th: Otsu with filler-column marks to help OCR detect '<'.
     _, otsu_binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     inv = cv2.bitwise_not(otsu_binary)
     marked = _mark_filler_columns(inv, n_lines=n_lines)
     marked_bgr = cv2.cvtColor(cv2.bitwise_not(marked), cv2.COLOR_GRAY2BGR)
 
-    # --- Extra candidates for low-contrast / noisy / aged scans ---
-    # 5th: histogram-stretched + aggressive CLAHE → helps faded documents.
     norm_gray = _normalize_contrast(_to_gray(cropped))
     if do_deskew:
         norm_gray = deskew(norm_gray)
@@ -198,7 +192,6 @@ def preprocess(image: np.ndarray, box: tuple[int, int, int, int], n_lines: int =
         norm_gray = upscale(norm_gray, n_lines=n_lines)
     norm_img = _otsu(norm_gray)
 
-    # 6th: morphological noise removal → helps speckle/background pattern interference.
     morpho_gray = _clahe_aggressive(_to_gray(cropped))
     if do_deskew:
         morpho_gray = deskew(morpho_gray)
@@ -206,8 +199,6 @@ def preprocess(image: np.ndarray, box: tuple[int, int, int, int], n_lines: int =
         morpho_gray = upscale(morpho_gray, n_lines=n_lines)
     morpho_img = _morpho_clean(morpho_gray)
 
-    # 7th: guilloche/security-pattern suppression → background subtraction +
-    # per-band adaptive threshold. Critical for documents with dense wave patterns.
     guilloche_base = _to_gray(cropped)
     if do_deskew:
         guilloche_base = deskew(guilloche_base)

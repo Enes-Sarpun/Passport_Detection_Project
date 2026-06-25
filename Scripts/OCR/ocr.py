@@ -19,7 +19,6 @@ _ALLOWLIST = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
 _MRZ_LENGTHS = (30, 36, 44)
 
 # Minimum strip height in pixels — critical for OCR accuracy on small crops.
-# MRZ OCR-B characters need at least 64 px cap-height; 80 is a safe minimum.
 _MIN_STRIP_H = 80
 
 # Lazy engine loaders
@@ -229,31 +228,37 @@ def _paddle_read_full(image: np.ndarray, n_lines: int, target_len: int) -> OcrRe
 
 # Public API
 def run_ocr(image: np.ndarray, n_lines: int = 2) -> list[OcrResult]:
-    results: list[OcrResult] = []
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     target_len = 30 if n_lines >= 3 else 44
 
-    # --- EasyOCR (GPU, primary) ---
-    try:
-        results.append(_run_easy(image, n_lines))
-    except Exception as exc:
-        results.append(OcrResult(lines=[], engine=f"easyocr_error:{exc}"))
+    tasks = {
+        "easy":       lambda: _run_easy(image, n_lines),
+        "paddle":     lambda: _run_paddle(image, n_lines),
+        "paddle_det": lambda: _paddle_read_full(image, n_lines, target_len),
+    }
 
-    # --- PaddleOCR recognition-only (fast secondary) ---
-    try:
-        results.append(_run_paddle(image, n_lines))
-    except Exception as exc:
-        results.append(OcrResult(lines=[], engine=f"paddleocr_error:{exc}"))
-
-    # --- PaddleOCR full detection+recognition (best for complex backgrounds) ---
-    try:
-        results.append(_paddle_read_full(image, n_lines, target_len))
-    except Exception as exc:
-        results.append(OcrResult(lines=[], engine=f"paddle_det_error:{exc}"))
+    results: list[OcrResult] = []
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        futures = {pool.submit(fn): name for name, fn in tasks.items()}
+        for future in as_completed(futures):
+            name = futures[future]
+            try:
+                results.append(future.result())
+            except Exception as exc:
+                results.append(OcrResult(lines=[], engine=f"{name}_error:{exc}"))
 
     return results
 
 def run_ocr_multi(images: list[np.ndarray]) -> list[OcrResult]:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     results: list[OcrResult] = []
-    for img in images:
-        results.extend(run_ocr(img))
+    with ThreadPoolExecutor(max_workers=len(images)) as pool:
+        futures = [pool.submit(run_ocr, img) for img in images]
+        for future in as_completed(futures):
+            try:
+                results.extend(future.result())
+            except Exception:
+                pass
     return results
+
+

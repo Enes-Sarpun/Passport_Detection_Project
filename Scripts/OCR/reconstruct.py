@@ -9,14 +9,8 @@ TD2_LINES, TD2_LEN = 2, 36
 TD3_LINES, TD3_LEN = 2, 44
 
 # Characters OCR commonly uses instead of '<'.
-# Note: 'C' and 'c' are NOT mapped — 'C' is a valid MRZ character that appears
-# in document numbers, country codes (e.g. SC1488168), and names.
 _FILLER_MAP = str.maketrans("k([ ", "<<<<")
 
-# MRZ line-start anchors: first non-< character expected at position 0.
-# TD3 line 1 always starts with P (passport) or other doc-type letter.
-# TD3 line 2 always starts with a digit or uppercase letter (doc number).
-# We use these to strip leading junk characters introduced by OCR.
 _VALID_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<")
 
 def _normalize(text: str) -> str:
@@ -124,6 +118,7 @@ class ReconstructedMRZ:
     fmt: str
     lines: list[str]
     line_length: int
+    best_ocr_confidence: float = 0.0
 
 # Minimum per-candidate confidence to participate in column voting.
 # Candidates below this threshold produce mostly noise and drag down the vote.
@@ -178,9 +173,7 @@ def _validation_score(lines: list[str]) -> float:
                 if key == "composite_valid":
                     composite_passed = True
 
-        # Composite check digit covers all of line 2 and is the strongest signal
-        # of a correctly-read MRZ.  Reward it with a large bonus; candidates that
-        # fail composite almost certainly have wrong alignment or garbage OCR.
+        # Composite check digit covers all of line 2 and is the strongest signal, of a correctly-read MRZ.  Reward it with a large bonus; candidates that, fail composite almost certainly have wrong alignment or garbage OCR.
         composite_bonus = 20.0 if composite_passed else 0.0
         return cd_passes * 10.0 + density * 5.0 + composite_bonus
     except Exception:
@@ -205,12 +198,9 @@ def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
     fmt, line_len = detect_format(raw_lines)
     n_lines = {"TD1": 3, "TD2": 2, "TD3": 2}[fmt]
 
-    # --- Per-candidate alignment & validation scoring ---
-    # For 2-line formats (TD3/TD2) we use check-digit-aware line2 alignment:
-    # try all plausible offsets and pick the one that maximises validation passes.
-    # This prevents OCR engines that read past the MRZ boundary from landing on
-    # a wrong offset that happens to pass a check digit by coincidence.
-    # Composite score = cd_passes_without_repair * 10 + density * 5 + ocr_conf * 3
+    # Per-candidate alignment & validation scoring 
+    # For 2-line formats (TD3/TD2) we use check-digit-aware line2 alignment, try all plausible offsets and pick the one that maximises validation passes.
+    # This prevents OCR engines that read past the MRZ boundary from landing on, a wrong offset that happens to pass a check digit by coincidence.
     scored: list[tuple[float, float, list[str]]] = []
     for ocr_r in usable:
         extracted = _extract_lines(ocr_r, n_lines)
@@ -221,11 +211,8 @@ def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
             aligned = [_align_line(extracted[i], line_len, i) for i in range(n_lines)]
         vscore = _validation_score(aligned)
         # Composite ranking: OCR confidence (primary) + structural validation (secondary).
-        # vscore uses a 0.3 multiplier so that a high-confidence clean read (paddle_det
-        # at 0.86) beats a low-confidence read that happens to pass more check digits
-        # by coincidence. The 10× confidence weight reflects that engine confidence
-        # is calibrated and reliable, while check-digit coincidences are common in
-        # garbled OCR output.
+        # Vscore uses a 0.3 multiplier so that a high-confidence clean read (paddle_det, at 0.86) beats a low-confidence read that happens to pass more check digits, by coincidence. The 10× confidence weight reflects that engine confidence
+        # is calibrated and reliable, while check-digit coincidences are common in, garbled OCR output.
         composite = vscore * 0.3 + ocr_r.mean_confidence * 10.0
         scored.append((composite, ocr_r.mean_confidence, aligned))
 
@@ -234,7 +221,8 @@ def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
 
     # Use the best candidate directly — voting across noisy candidates degrades quality.
     if best_score > 0.0:
-        return ReconstructedMRZ(fmt=fmt, lines=best_lines, line_length=line_len)
+        return ReconstructedMRZ(fmt=fmt, lines=best_lines, line_length=line_len,
+                                best_ocr_confidence=best_conf)
 
     # All candidates scored zero — fall back to confidence-weighted column voting.
     result_lines: list[str] = []
@@ -244,6 +232,8 @@ def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
         voted = column_vote(cand_texts, cand_confs, line_len)
         result_lines.append(voted)
 
-    return ReconstructedMRZ(fmt=fmt, lines=result_lines, line_length=line_len)
+    fallback_conf = max((s[1] for s in scored), default=0.0)
+    return ReconstructedMRZ(fmt=fmt, lines=result_lines, line_length=line_len,
+                            best_ocr_confidence=fallback_conf)
 
 

@@ -8,7 +8,6 @@ from .country_lookup import resolve_country as _resolve_country, _repair_country
 MRZ_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
 
 # Standard OCR confusion swaps used during check-digit self-repair.
-# Each tuple is a bidirectional pair; repair tries replacing one with the other.
 CONFUSION_PAIRS = [
     ("0", "O"),
     ("1", "I"),
@@ -95,7 +94,6 @@ def parse_date(yymmdd: str, *, is_birth: bool) -> Optional[str]:
     if is_birth:
         century = 1900 if yy > current_yy else 2000
     else:
-        # Expiry: assume 2000s unless clearly far past.
         century = 2000 if yy <= current_yy + 50 else 1900
     year = century + yy
     try:
@@ -146,6 +144,110 @@ def parse_name(name_field: str, repaired: list[str] | None = None) -> tuple[str,
     }
     return surname, given_names, name_dict
 
+def _structural_checks(
+    fmt: str,
+    lines: list[str],
+    doc_type: str,
+    issuing_country: str,
+    nationality: str,
+    sex: str,
+    birth_date_iso: Optional[str],
+    expiry_date_iso: Optional[str],
+) -> dict[str, bool]:
+    from .country_lookup import resolve_country as _rc
+
+    lengths = {"TD3": [44, 44], "TD2": [36, 36], "TD1": [30, 30, 30]}
+    expected = lengths.get(fmt, [])
+    line_length_valid = len(lines) == len(expected) and all(
+        len(l) == e for l, e in zip(lines, expected)
+    )
+
+    dates_well_formed = True
+    for raw_date in (
+        lines[1][13:19] if fmt == "TD3" and len(lines) > 1 else "",
+        lines[1][21:27] if fmt == "TD3" and len(lines) > 1 else "",
+        lines[1][0:6] if fmt in ("TD2", "TD1") and len(lines) > 1 else "",
+        lines[1][8:14] if fmt in ("TD2", "TD1") and len(lines) > 1 else "",
+    ):
+        if not raw_date or not raw_date.isdigit():
+            continue
+        mm, dd = int(raw_date[2:4]), int(raw_date[4:6])
+        if not (1 <= mm <= 12 and 1 <= dd <= 31):
+            dates_well_formed = False
+            break
+
+    expiry_after_birth = True
+    if birth_date_iso and expiry_date_iso:
+        try:
+            import datetime as _dt2
+            expiry_after_birth = (
+                _dt2.date.fromisoformat(expiry_date_iso)
+                > _dt2.date.fromisoformat(birth_date_iso)
+            )
+        except ValueError:
+            expiry_after_birth = False
+
+    country_codes_known = (
+        _rc(issuing_country)["name"] != "Unknown"
+        and _rc(nationality)["name"] != "Unknown"
+    )
+
+    sex_value_valid = sex in {"M", "F", "X", "<", ""}
+
+    from .schema_helpers import _DOC_TYPE_MAP
+    document_type_known = doc_type in _DOC_TYPE_MAP or doc_type.rstrip("<") in _DOC_TYPE_MAP
+
+    return {
+        "line_length_valid": line_length_valid,
+        "dates_well_formed": dates_well_formed,
+        "expiry_after_birth": expiry_after_birth,
+        "country_codes_known": country_codes_known,
+        "sex_value_valid": sex_value_valid,
+        "document_type_known": document_type_known,
+    }
+
+
+def _build_validation(
+    fmt: str,
+    lines: list[str],
+    doc_type: str,
+    issuing_country: str,
+    nationality: str,
+    sex: str,
+    birth_date_iso: Optional[str],
+    expiry_date_iso: Optional[str],
+    doc_valid: bool,
+    birth_valid: bool,
+    expiry_valid: bool,
+    personal_valid: bool,
+    composite_valid: bool,
+    repaired: list[str],
+) -> dict:
+    structural = _structural_checks(
+        fmt, lines, doc_type, issuing_country, nationality,
+        sex, birth_date_iso, expiry_date_iso,
+    )
+
+    checkdigit_results = {
+        "document_number_valid": doc_valid,
+        "date_of_birth_valid": birth_valid,
+        "date_of_expiry_valid": expiry_valid,
+        "personal_number_valid": personal_valid,
+        "composite_valid": composite_valid,
+    }
+
+    all_checks = {**checkdigit_results, **structural}
+    failed = [k for k, v in all_checks.items() if v is False]
+    mrz_overall_valid = len(failed) == 0
+
+    return {
+        **checkdigit_results,
+        **structural,
+        "mrz_overall_valid": mrz_overall_valid,
+        "failed_checks": failed,
+    }
+
+
 @dataclass
 class MRZResult:
     document_type: str
@@ -186,25 +288,21 @@ def parse_td3(line1: str, line2: str) -> MRZResult:
     line2 = line2.ljust(44, "<")[:44]
     repaired: list[str] = []
 
-    # ICAO TD3: char[0] = doc type letter, char[1] = sub-type or '<'.
-    # In practice char[1] is almost always '<' (filler). OCR commonly reads
-    # '<' as look-alike letters. Strategy: if char[1] is NOT '<' but chars[1:4]
-    # form a valid/repairable ISO-3166 country code, treat char[1] as '<' and
-    # shift: the real country code starts at char[1].
     _FILLER_LOOKALIKES = {"V", "U", "W", "N", "M", "T"}
     line1_chars = list(line1)
     if line1_chars[0] in "PICVA" and line1_chars[1] != "<":
-        # Try inserting '<' at position 1 — shift country code one left.
-        candidate_country = "".join(line1_chars[1:4])
-        repaired_candidate = _repair_country_digits(candidate_country)
         from .country_lookup import resolve_country as _rc
-        if _rc(repaired_candidate)["name"] != "Unknown":
-            # chars[1:4] is a valid country code → char[1] was the filler '<'.
+        cand_at_1 = _repair_country_digits("".join(line1_chars[1:4]))
+        cand_at_2 = _repair_country_digits("".join(line1_chars[2:5]))
+        if _rc(cand_at_1)["name"] != "Unknown":
             line1_chars.insert(1, "<")
             line1 = "".join(line1_chars[:44]).ljust(44, "<")[:44]
             repaired.append("document_type")
+        elif _rc(cand_at_2)["name"] != "Unknown":
+            line1_chars[1] = "<"
+            line1 = "".join(line1_chars)
+            repaired.append("document_type")
         elif line1_chars[1] in _FILLER_LOOKALIKES:
-            # chars[1:4] not a country code but char[1] looks like '<' → replace.
             line1_chars[1] = "<"
             line1 = "".join(line1_chars)
             repaired.append("document_type")
@@ -229,7 +327,6 @@ def parse_td3(line1: str, line2: str) -> MRZResult:
     birth, birth_valid = _validate_and_repair(birth, birth_cd, "date_of_birth", repaired)
     expiry, expiry_valid = _validate_and_repair(expiry, expiry_cd, "date_of_expiry", repaired)
 
-    # Personal number may be all-filler; that's valid with check digit 0/<.
     if personal.replace("<", "") == "":
         personal_valid = personal_cd in ("<", "0")
     else:
@@ -238,27 +335,31 @@ def parse_td3(line1: str, line2: str) -> MRZResult:
     composite_data = line2[0:10] + line2[13:20] + line2[21:43]
     composite_valid = check_digit_valid(composite_data, composite_cd)
 
+    birth_iso = parse_date(birth, is_birth=True)
+    expiry_iso = parse_date(expiry, is_birth=False)
+    doc_type_final = doc_type or "P"
+
+    validation = _build_validation(
+        "TD3", [line1, line2], doc_type_final, issuing, nationality, sex,
+        birth_iso, expiry_iso, doc_valid, birth_valid, expiry_valid,
+        personal_valid, composite_valid, repaired,
+    )
+
     return MRZResult(
-        document_type=doc_type or "P",
+        document_type=doc_type_final,
         issuing_country=issuing,
         document_number=doc_number.replace("<", ""),
         nationality=nationality,
         birth_date_raw=birth,
-        birth_date_iso=parse_date(birth, is_birth=True),
+        birth_date_iso=birth_iso,
         sex=sex,
         expiry_date_raw=expiry,
-        expiry_date_iso=parse_date(expiry, is_birth=False),
+        expiry_date_iso=expiry_iso,
         personal_number=personal.replace("<", ""),
         surname=surname,
         given_names=given,
         name_dict=name_dict,
-        validation={
-            "document_number_valid": doc_valid,
-            "date_of_birth_valid": birth_valid,
-            "date_of_expiry_valid": expiry_valid,
-            "personal_number_valid": personal_valid,
-            "composite_valid": composite_valid,
-        },
+        validation=validation,
         auto_repaired_fields=repaired,
     )
 
@@ -289,26 +390,31 @@ def parse_td2(line1: str, line2: str) -> MRZResult:
     composite_data = line2[0:10] + line2[13:20] + line2[21:35]
     composite_valid = check_digit_valid(composite_data, composite_cd)
 
+    birth_iso = parse_date(birth, is_birth=True)
+    expiry_iso = parse_date(expiry, is_birth=False)
+    doc_type_final = doc_type or "I"
+
+    validation = _build_validation(
+        "TD2", [line1, line2], doc_type_final, issuing, nationality, sex,
+        birth_iso, expiry_iso, doc_valid, birth_valid, expiry_valid,
+        True, composite_valid, repaired,
+    )
+
     return MRZResult(
-        document_type=doc_type or "I",
+        document_type=doc_type_final,
         issuing_country=issuing,
         document_number=doc_number.replace("<", ""),
         nationality=nationality,
         birth_date_raw=birth,
-        birth_date_iso=parse_date(birth, is_birth=True),
+        birth_date_iso=birth_iso,
         sex=sex,
         expiry_date_raw=expiry,
-        expiry_date_iso=parse_date(expiry, is_birth=False),
+        expiry_date_iso=expiry_iso,
         personal_number=optional.replace("<", ""),
         surname=surname,
         given_names=given,
         name_dict=name_dict,
-        validation={
-            "document_number_valid": doc_valid,
-            "date_of_birth_valid": birth_valid,
-            "date_of_expiry_valid": expiry_valid,
-            "composite_valid": composite_valid,
-        },
+        validation=validation,
         auto_repaired_fields=repaired,
     )
 
@@ -342,26 +448,31 @@ def parse_td1(line1: str, line2: str, line3: str) -> MRZResult:
     composite_data = line1[5:30] + line2[0:7] + line2[8:15] + line2[18:29]
     composite_valid = check_digit_valid(composite_data, composite_cd)
 
+    birth_iso = parse_date(birth, is_birth=True)
+    expiry_iso = parse_date(expiry, is_birth=False)
+    doc_type_final = doc_type or "I"
+
+    validation = _build_validation(
+        "TD1", [line1, line2, line3], doc_type_final, issuing, nationality, sex,
+        birth_iso, expiry_iso, doc_valid, birth_valid, expiry_valid,
+        True, composite_valid, repaired,
+    )
+
     return MRZResult(
-        document_type=doc_type or "I",
+        document_type=doc_type_final,
         issuing_country=issuing,
         document_number=doc_number.replace("<", ""),
         nationality=nationality,
         birth_date_raw=birth,
-        birth_date_iso=parse_date(birth, is_birth=True),
+        birth_date_iso=birth_iso,
         sex=sex,
         expiry_date_raw=expiry,
-        expiry_date_iso=parse_date(expiry, is_birth=False),
+        expiry_date_iso=expiry_iso,
         personal_number=(optional1 + optional2).replace("<", ""),
         surname=surname,
         given_names=given,
         name_dict=name_dict,
-        validation={
-            "document_number_valid": doc_valid,
-            "date_of_birth_valid": birth_valid,
-            "date_of_expiry_valid": expiry_valid,
-            "composite_valid": composite_valid,
-        },
+        validation=validation,
         auto_repaired_fields=repaired,
     )
 
@@ -375,5 +486,4 @@ def parse_mrz(lines: list[str]) -> Optional[MRZResult]:
     if len(lines) == 3:
         return parse_td1(lines[0], lines[1], lines[2])
     return None
-
 

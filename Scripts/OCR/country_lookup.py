@@ -31,17 +31,10 @@ _DIGIT_TO_LETTER: dict[str, str] = {
 }
 
 def _repair_country_digits(code: str) -> str:
-    """Replace digit OCR confusions in a 3-letter country code (all chars must be A-Z)."""
     return "".join(_DIGIT_TO_LETTER.get(c, c) for c in code)
 
 
 def resolve_country(alpha3: str, repaired: list[str] | None = None, field_name: str = "") -> dict[str, str]:
-    """Resolve an ISO/ICAO alpha-3 country code to a name dict.
-
-    If *repaired* list is provided and the code needed digit→letter repair,
-    *field_name* is appended to that list so the caller can record it in
-    ``auto_repaired_fields``.
-    """
     raw = alpha3.strip().upper()
 
     # Check ICAO overrides before stripping '<' — codes like 'D<<' must match as-is.

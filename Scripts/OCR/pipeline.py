@@ -37,8 +37,7 @@ def _process_frame(
     ocr_results: list[OcrResult] = run_ocr_multi(candidates)
 
     # Score each OcrResult individually by how many check digits pass after parse.
-    # This lets a lower-confidence-but-accurate engine win over a high-confidence
-    # engine that produces plausible-looking but wrong characters.
+    # This lets a lower-confidence-but-accurate engine win over a high-confidence, engine that produces plausible-looking but wrong characters.
     # NOTE: we normalize text before parse to match what reconstruct() does.
     from .reconstruct import _align_line, TD3_LEN, TD3_LINES
     def _validation_score(ocr_r: OcrResult) -> int:
@@ -73,9 +72,7 @@ def _process_frame(
         result = failure_output("parse_failed", raw_mrz=chosen_lines, warnings=["mrz_format_invalid"])
         return result, detection, reconstructed
 
-    ocr_conf = sum(r.mean_confidence for r in ocr_results if r.lines) / max(
-        sum(1 for r in ocr_results if r.lines), 1
-    )
+    ocr_conf = reconstructed.best_ocr_confidence if reconstructed else 0.0
 
     # Collect pipeline-stage warnings to pass into schema builder.
     pipeline_warnings: list[str] = []
@@ -258,3 +255,5 @@ def _vote_and_parse(
         ocr_confidence=0.0,
         raw_mrz=voted_lines,
     )
+
+
