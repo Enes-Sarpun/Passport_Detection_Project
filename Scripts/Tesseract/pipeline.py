@@ -4,8 +4,6 @@ from pathlib import Path
 from typing import Optional, Union
 import cv2
 import numpy as np
-
-# Shared modules from the OCR pipeline
 from Scripts.OCR.detect import detect_mrz, Detection
 from Scripts.OCR.preprocess import crop, deskew, upscale, _to_gray
 from Scripts.OCR.mrz_parse import parse_mrz, MRZResult
@@ -15,7 +13,6 @@ from Scripts.OCR.reconstruct import (
     TD3_LEN, TD2_LEN, TD1_LEN,
     detect_format, _validation_score,
 )
-
 from .ocr import run_tesseract_ocrb, TesseractResult
 
 
@@ -25,11 +22,6 @@ def _count_cd_passes(lines: list[str]) -> int:
 
 
 def _tesseract_preprocess(image: np.ndarray, box: tuple, n_lines: int) -> list[np.ndarray]:
-    """Minimal preprocessing for Tesseract — no binarization.
-
-    Tesseract's internal preprocessing outperforms our binary candidates.
-    We provide: raw gray, CLAHE-enhanced gray, and lightly sharpened gray.
-    """
     import cv2 as _cv2
     cropped = crop(image, box)
     gray = _to_gray(cropped)
@@ -62,7 +54,6 @@ def _align_result(result: TesseractResult, n_lines: int, line_len: int) -> list[
 
     if n_lines == 2:
         # Try both line orderings and keep the one with more check-digit passes.
-        # This handles PSM 6 line-order reversals (e.g. stamp noise hiding line 1).
         l1a, l2a = _best_aligned_pair(raw_lines[0], raw_lines[1], line_len)
         cd_normal = _count_cd_passes([l1a, l2a])
 

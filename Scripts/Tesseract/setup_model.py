@@ -1,12 +1,3 @@
-"""
-Download the OCR-B trained Tesseract model (ocrb.traineddata).
-
-Source: https://github.com/Shreeshrii/tessdata_ocrb
-Char error rate on synthetic MRZ: 0%  (vs ~45% for generic eng model)
-
-Run once:
-    python main_tess.py setup
-"""
 from __future__ import annotations
 from pathlib import Path
 

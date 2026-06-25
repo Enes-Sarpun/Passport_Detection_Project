@@ -57,7 +57,6 @@ def _clahe(gray: np.ndarray) -> np.ndarray:
 
 
 def _clahe_aggressive(gray: np.ndarray) -> np.ndarray:
-    """Stronger CLAHE pass for low-contrast / aged document scans."""
     clahe = cv2.createCLAHE(clipLimit=4.0, tileGridSize=(4, 4))
     return clahe.apply(gray)
 
@@ -80,7 +79,6 @@ def _adaptive(gray: np.ndarray) -> np.ndarray:
 
 
 def _morpho_clean(gray: np.ndarray) -> np.ndarray:
-    """Morphological opening to remove background noise, then Otsu."""
     denoised = cv2.fastNlMeansDenoising(gray, h=15, templateWindowSize=7, searchWindowSize=21)
     _, bw = cv2.threshold(denoised, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))

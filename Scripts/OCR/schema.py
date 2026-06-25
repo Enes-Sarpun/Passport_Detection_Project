@@ -8,9 +8,7 @@ from .schema_helpers import _DOC_TYPE_MAP, _SEX_MAP
 
 SCHEMA_VERSION = "5"
 
-# ---------------------------------------------------------------------------
 # Internal thresholds
-# ---------------------------------------------------------------------------
 _LOW_OCR_CONF = 0.60
 _LOW_DETECT_CONF = 0.50
 _RESCAN_THRESHOLD = 0.75
@@ -19,9 +17,7 @@ _DOB_AGE_MIN = 5
 _DOB_AGE_MAX = 100
 
 
-# ---------------------------------------------------------------------------
 # Small helpers
-# ---------------------------------------------------------------------------
 
 def _document_type_description(doc_type: str) -> str:
     return _DOC_TYPE_MAP.get(doc_type, "Unknown")
@@ -75,15 +71,10 @@ def _days_until_expiry(iso_expiry: Optional[str]) -> Optional[int]:
 
 
 def _validity_period_years(iso_dob: Optional[str], iso_expiry: Optional[str]) -> Optional[int]:
-    """Approximate validity window from DOB to expiry (passport standard is 10y from issue,
-    but MRZ carries no issue date — we expose null rather than guess."""
     return None
 
 
-# ---------------------------------------------------------------------------
 # Reliability score (J4)
-# weights: 0.45 cd_fraction + 0.25 structural + 0.20 ocr_conf + 0.10 detect_conf
-# ---------------------------------------------------------------------------
 
 def _reliability_score(
     cd_fraction: float,
@@ -109,9 +100,7 @@ def _reliability_score(
     return round(max(0.0, min(1.0, score)), 2)
 
 
-# ---------------------------------------------------------------------------
 # Main builder
-# ---------------------------------------------------------------------------
 
 def build_output(
     result: MRZResult,
@@ -127,7 +116,6 @@ def build_output(
     ocr_c = float(ocr_confidence)
     det_c = float(detection_confidence)
 
-    # ── per-field confidences ──────────────────────────────────────────────
     field_confs = {
         "document_number": _field_confidence(
             ocr_c, checks.get("document_number_valid"), "document_number" in repaired_set),
@@ -141,7 +129,6 @@ def build_output(
         "name": _field_confidence(ocr_c, None, "name" in repaired_set),
     }
 
-    # ── check-digit stats ──────────────────────────────────────────────────
     checkdigit_keys = {
         "document_number_valid", "date_of_birth_valid",
         "date_of_expiry_valid", "personal_number_valid", "composite_valid",
@@ -163,7 +150,6 @@ def build_output(
 
     mean_field_conf = sum(field_confs.values()) / len(field_confs)
 
-    # ── derived date values (J1) ───────────────────────────────────────────
     today = _dt.date.today()
     is_expired = False
     days_until_exp: Optional[int] = None
@@ -177,12 +163,10 @@ def build_output(
 
     age = _compute_age(result.birth_date_iso)
 
-    # ── specimen / zero-number flags (J3) ──────────────────────────────────
     is_specimen = check_stop_words(result.surname, result.given_names)
     doc_number_clean = result.document_number.replace("<", "")
     zero_docnum = bool(doc_number_clean) and all(c == "0" for c in doc_number_clean)
 
-    # ── reliability score (J4) ─────────────────────────────────────────────
     rel_score = _reliability_score(
         cd_fraction, structural_fraction, mean_field_conf, det_c,
         is_specimen, zero_docnum, is_expired,
@@ -193,7 +177,6 @@ def build_output(
         or checks.get("line_length_valid") is False
     )
 
-    # ── warnings ───────────────────────────────────────────────────────────
     warnings: list[str] = list(extra_warnings or [])
 
     if 0 < det_c < _LOW_DETECT_CONF:
@@ -296,14 +279,12 @@ def build_output(
         if raw_doc_type_char and raw_doc_type_char[1] != "<":
             clean_repaired.append("document_type")
 
-    # ── status ─────────────────────────────────────────────────────────────
     status = "ok"
     if rel_score < _RESCAN_THRESHOLD:
         status = "low_confidence"
         if "low_confidence" not in warnings:
             warnings.append("low_confidence")
 
-    # ── assemble output (Phase 5 schema) ───────────────────────────────────
     doc_type_desc = _document_type_description(result.document_type)
     sex_desc = _sex_description(sex_raw)
 

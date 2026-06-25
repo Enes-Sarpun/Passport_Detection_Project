@@ -5,15 +5,11 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-# ---------------------------------------------------------------------------
 # Tesseract binary path
-# ---------------------------------------------------------------------------
 _TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# ---------------------------------------------------------------------------
 # OCR-B tessdata — must be ASCII path, set via TESSDATA_PREFIX env variable.
-# ocrb.traineddata is copied here by setup_model.py.
-# ---------------------------------------------------------------------------
+
 _TESSDATA_DIR = Path(r"C:\tessdata_ocrb")
 
 _MRZ_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
@@ -77,14 +73,12 @@ class TesseractResult:
 
 
 def _read_image_ocrb(image: np.ndarray, n_lines: int) -> tuple[list[str], float]:
-    """Read MRZ from image using Tesseract OCR-B, returning (lines, confidence)."""
     pytesseract = _get_pytesseract()
 
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
     gray = _upscale(gray, min_h=_MIN_STRIP_H * n_lines)
 
     # PSM 6: uniform block of text — reads all MRZ lines at once.
-    # Significantly better than PSM 7 (single line) for multi-line MRZ crops.
     config = (
         "--oem 1 --psm 6 "
         "-l ocrb "
@@ -128,7 +122,6 @@ def _read_image_ocrb(image: np.ndarray, n_lines: int) -> tuple[list[str], float]
 
 
 def run_tesseract_ocrb(image: np.ndarray, n_lines: int = 2) -> TesseractResult:
-    """Run Tesseract with OCR-B model on an MRZ crop."""
     raw_lines, conf = _read_image_ocrb(image, n_lines)
 
     lines: list[TesseractLine] = []

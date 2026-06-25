@@ -4,15 +4,16 @@
 
 ![Proje Demo](gif/PDS.gif)
 
-**YOLO ile MRZ tespiti · MRZ çözümleme · OCR ile yapılandırılmış JSON çıktısı**
+**YOLO ile MRZ tespiti · ICAO 9303 çözümleme · Tesseract + OCR-B ile yapılandırılmış JSON çıktısı**
 
 Pasaport ve kimlik belgelerindeki **MRZ (Machine Readable Zone)** bölgesini YOLO ile tespit eden,
-bu bölgeyi OCR ile okuyup çözümleyen ve sonuçları temiz bir **JSON** yapısına aktaran uçtan uca bir hat.
+bu bölgeyi **Tesseract + OCR-B** ile okuyup çözümleyen ve sonuçları temiz bir **JSON** yapısına
+aktaran uçtan uca bir hat.
 
 <p>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white">
   <img alt="YOLO" src="https://img.shields.io/badge/Detection-YOLO-00FFFF?logo=yolo&logoColor=black">
-  <img alt="OCR" src="https://img.shields.io/badge/OCR-Tesseract%20%2F%20EasyOCR-FF6F00">
+  <img alt="OCR" src="https://img.shields.io/badge/OCR-Tesseract%20%2B%20OCR--B-FF6F00">
   <img alt="SQLite" src="https://img.shields.io/badge/DB-SQLite-003B57?logo=sqlite&logoColor=white">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-green">
 </p>
@@ -26,14 +27,14 @@ bu bölgeyi OCR ile okuyup çözümleyen ve sonuçları temiz bir **JSON** yapı
 Bu proje, pasaport ve seyahat belgelerinin görüntülerinden **otomatik veri çıkarımı** yapar:
 
 1. **🔍 Tespit (Detection)** — YOLO modeli, belge üzerindeki **MRZ** bölgesini tespit eder ve kırpar.
-2. **🧩 Çözümleme (Parsing)** — Tespit edilen MRZ satırları, ICAO 9303 formatına göre çözülerek alanlara ayrılır.
-3. **🔤 OCR & Çıktı** — MRZ ve ilgili alanlar OCR ile okunur, doğrulanır ve **yapılandırılmış JSON** olarak kaydedilir.
+2. **🔤 OCR (Tesseract + OCR-B)** — Kırpılan MRZ bölgesi, MRZ'ye özel eğitilmiş **OCR-B** modeliyle okunur.
+3. **🧩 Çözümleme & Çıktı** — MRZ satırları ICAO 9303'e göre çözülür, doğrulanır ve **yapılandırılmış JSON** olarak kaydedilir.
 
 ```text
-   ┌──────────┐     ┌──────────┐     ┌──────────┐     ┌──────────┐
-   │  Görüntü │ ──▶ │   YOLO   │ ──▶ │   MRZ    │ ──▶ │   OCR    │ ──▶  📄 JSON
-   │ (Passport)│    │ Tespiti  │     │ Çözümleme│     │ + Doğrul.│
-   └──────────┘     └──────────┘     └──────────┘     └──────────┘
+   ┌──────────┐     ┌──────────┐     ┌──────────────┐     ┌──────────┐
+   │  Görüntü │ ──▶ │   YOLO   │ ──▶ │  Tesseract   │ ──▶ │   MRZ    │ ──▶  📄 JSON
+   │ (Passport)│    │ Tespiti  │     │   + OCR-B    │     │ Çözümleme│
+   └──────────┘     └──────────┘     └──────────────┘     └──────────┘
 ```
 
 ---
@@ -41,10 +42,12 @@ Bu proje, pasaport ve seyahat belgelerinin görüntülerinden **otomatik veri ç
 ## ✨ Özellikler
 
 - 🎯 **YOLO tabanlı MRZ tespiti** — pasaport/kimlik üzerindeki MRZ bölgesini hızlı ve doğru biçimde bulur.
+- 🔤 **Tesseract + OCR-B** — MRZ'ye özel eğitilmiş OCR-B modeli; sentetik MRZ'de **%0 karakter hata oranı**.
 - 🧠 **ICAO 9303 MRZ çözümleme** — TD1 / TD2 / TD3 formatlarını destekleyen alan ayrıştırma.
-- 🔤 **OCR entegrasyonu** — Tesseract / EasyOCR ile metin okuma.
-- ✅ **Checksum doğrulaması** — MRZ kontrol haneleriyle alan doğruluğunun denetimi.
-- 📦 **Yapılandırılmış JSON çıktısı** — ülke, ad, soyad, belge kodu, belge tipi ve daha fazlası.
+- ✅ **Checksum doğrulaması** — MRZ kontrol haneleriyle alan doğruluğunun denetimi ve otomatik onarım.
+- 🛠️ **Pozisyonel onarım** — tarih→rakam, ülke kodu→harf sınıf kısıtlarıyla OCR hatalarını düzeltir.
+- 📊 **Güvenilirlik skoru** — kontrol hanesi, yapısal tutarlılık ve OCR güvenini birleştiren `reliability_score`.
+- 📦 **Yapılandırılmış JSON çıktısı** — ülke, ad, soyad, belge kodu, yaş, geçerlilik durumu ve daha fazlası.
 - 🗃️ **SQLite referans veritabanı** — ülke ve belge bilgilerinin eşleştirilmesi için.
 
 ---
@@ -53,14 +56,23 @@ Bu proje, pasaport ve seyahat belgelerinin görüntülerinden **otomatik veri ç
 
 ```text
 Passport-OCR-YOLO/
+├── Scripts/
+│   ├── OCR/                # Çözümleme, doğrulama, JSON şeması (her iki hat ortak kullanır)
+│   │   ├── detect.py       #   YOLO MRZ tespiti
+│   │   ├── mrz_parse.py    #   ICAO 9303 çözümleme + kontrol hanesi onarımı
+│   │   ├── schema.py       #   Yapılandırılmış JSON çıktısı
+│   │   └── ...
+│   └── Tesseract/          # Tesseract + OCR-B OCR motoru
+│       ├── ocr.py          #   OCR-B okuma (--oem 1 --psm 6)
+│       ├── pipeline.py     #   Ön işleme + çözümleme hattı
+│       └── setup_model.py  #   ocrb.traineddata indirici
+├── tests/                  # MRZ çözümleme kabul testleri
 ├── Images/                 # Görüntü verisi (git'e dahil değildir)
-│   ├── Kimlikler/
-│   └── Original Data/
-│   └── MRZ Data/
+│   ├── MRZ_Data/
 │   └── Outputs/
-│   └── Results/
 ├── SQL/
 │   └── europa_data.db      # Referans veritabanı (ülke / belge bilgileri)
+├── main_tess.py            # Tesseract + OCR-B CLI giriş noktası
 ├── .gitignore
 ├── .gitattributes
 └── README.md
@@ -108,68 +120,70 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-**Önerilen bağımlılıklar:** `ultralytics`, `opencv-python`, `pytesseract` veya `easyocr`, `numpy`, `pandas`.
+**Önerilen bağımlılıklar:** `ultralytics`, `opencv-python`, `pytesseract`, `numpy`, `pandas`.
 
-> 🔧 Tesseract kullanılacaksa sistemde [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) ayrıca kurulmalıdır.
+> 🔧 Sistemde [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) kurulu olmalıdır
+> (Windows varsayılan yolu: `C:\Program Files\Tesseract-OCR\tesseract.exe`).
+
+```bash
+# MRZ'ye özel OCR-B modelini indir (ocrb.traineddata) — tek seferlik
+python main_tess.py setup
+```
 
 ---
 
 ## 🧪 Kullanım
 
 ```bash
-# Tek bir görüntüyü işle
-python main.py image "Images/MRZ_Data/Processed_data/images/test/2e11ec19-MAR-AS-02002_165552.jpg"
+# Tek bir görüntüyü işle (Tesseract + OCR-B)
+python main_tess.py image "Images/MRZ_Data/images/2dfa28dd-TUR-AO-02001_265357.jpg"
 
-# Kameradan canlı okuma başlat
-python main.py camera --index 0
+# Çıktıyı belirli bir klasöre yaz
+python main_tess.py image "<görüntü yolu>" --output-dir "Images/Outputs"
 ```
+
+İşlenen her görüntü için iki dosya üretilir:
+`<isim>_tess_annotated.jpg` (MRZ kutusu işaretli görüntü) ve `<isim>_tess_ocr.json` (çözümlenmiş veri).
 
 ### Örnek İşlem Sonucu
 
-![Annotated Image](gif/sample_annotated.jpg)
+![Annotated Image](gif/tess_annotated_sample.jpg)
 
 ```json
 {
-  "status": "ok",
-  "document_type": "PL",
-  "issuing_country": {
-    "code": "MAR",
-    "name": "Morocco"
+  "document": {
+    "type": { "code": "P", "description": "Passport" },
+    "number": { "value": "U00000261", "confidence": 0.99 },
+    "personal_number": { "value": "12345678901", "confidence": 0.99 },
+    "issuing_country": { "code": "TUR", "name": "Türkiye", "confidence": 0.9 },
+    "mrz_format": "TD3"
   },
-  "fields": {
-    "surname": "EL IDRISSI ADIB",
-    "given_names": "MOHAMMEDKAMINE",
-    "document_number": "SP1593413",
-    "nationality": {
-      "code": "MAR",
-      "name": "Morocco"
-    },
-    "date_of_birth": {
-      "raw": "540623",
-      "iso": "1954-06-23"
-    },
-    "sex": "M",
-    "date_of_expiry": {
-      "raw": "130331",
-      "iso": "2013-03-31"
-    },
-    "personal_number": "XA123456"
+  "holder": {
+    "surname": { "value": "ORNEK", "confidence": 0.9 },
+    "given_names": { "value": "ZEYNEP", "confidence": 0.9 },
+    "given_names_list": ["ZEYNEP"],
+    "full_name": "ZEYNEP ORNEK",
+    "nationality": { "code": "TUR", "name": "Türkiye", "confidence": 0.9 },
+    "sex": { "code": "F", "description": "Female", "confidence": 0.99 }
+  },
+  "dates": {
+    "date_of_birth": { "raw": "840601", "iso": "1984-06-01", "confidence": 0.99 },
+    "date_of_expiry": { "raw": "150415", "iso": "2015-04-15", "confidence": 0.99 },
+    "age": 42,
+    "is_expired": true,
+    "days_until_expiry": -4089,
+    "validity_period_years": null
   },
   "validation": {
-    "document_number_valid": true,
-    "date_of_birth_valid": true,
-    "date_of_expiry_valid": true,
-    "personal_number_valid": true,
-    "composite_valid": true,
+    "mrz_overall_valid": true,
+    "failed_checks": [],
     "auto_repaired_fields": []
   },
-  "detection_confidence": 0.8583,
-  "ocr_confidence": 0.6713,
-  "overall_confidence": 0.8589,
-  "raw_mrz": [
-    "PLMAREL<IDRISSI<ADIB<<MOHAMMEDKAMINE<<<<<<<<",
-    "SP15934131MAR5406238M1303317XA123456<<<<<<22"
-  ]
+  "quality": {
+    "reliability_score": 0.93,
+    "rescan_recommended": false
+  },
+  "warnings": ["document_expired"]
 }
 ```
 
@@ -177,13 +191,13 @@ python main.py camera --index 0
 
 ## 🔄 İşleyiş Akışı
 
-| Adım | Bileşen      | Görev                                                        |
-|------|--------------|-------------------------------------------------------------|
-| 1️⃣  | **YOLO**     | Belge görüntüsünde MRZ bölgesini tespit eder ve kırpar.     |
-| 2️⃣  | **OCR**      | Kırpılan MRZ bölgesindeki karakterleri okur.                |
-| 3️⃣  | **Parser**   | MRZ satırlarını ICAO 9303'e göre alanlara ayırır.           |
-| 4️⃣  | **Validator**| Kontrol haneleri (checksum) ile alan doğruluğunu denetler.  |
-| 5️⃣  | **Export**   | Sonuçları JSON olarak kaydeder ve veritabanıyla eşleştirir. |
+| Adım | Bileşen              | Görev                                                          |
+|------|----------------------|----------------------------------------------------------------|
+| 1️⃣  | **YOLO**             | Belge görüntüsünde MRZ bölgesini tespit eder ve kırpar.        |
+| 2️⃣  | **Tesseract + OCR-B**| Kırpılan MRZ bölgesindeki karakterleri OCR-B modeliyle okur.   |
+| 3️⃣  | **Parser**           | MRZ satırlarını ICAO 9303'e göre alanlara ayırır.              |
+| 4️⃣  | **Validator**        | Kontrol haneleriyle doğrular, OCR hatalarını otomatik onarır.  |
+| 5️⃣  | **Export**           | Sonuçları yapılandırılmış JSON olarak kaydeder.                |
 
 ---
 

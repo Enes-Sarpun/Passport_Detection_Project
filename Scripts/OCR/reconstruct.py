@@ -121,17 +121,9 @@ class ReconstructedMRZ:
     best_ocr_confidence: float = 0.0
 
 # Minimum per-candidate confidence to participate in column voting.
-# Candidates below this threshold produce mostly noise and drag down the vote.
 _MIN_VOTE_CONFIDENCE = 0.15
 
 def _validation_score(lines: list[str]) -> tuple[int, float, float]:
-    """Return (cd_passes, composite_bonus, density) for candidate ranking.
-
-    Returns a 3-tuple so callers can sort lexicographically:
-      - cd_passes: number of non-repaired, non-trivial check digits that passed (integer, primary)
-      - composite_bonus: 1.0 if composite check digit passed, else 0.0 (secondary)
-      - density: fraction of non-filler characters (tiebreak)
-    """
     if not lines:
         return (0, 0.0, 0.0)
     total_chars = sum(len(l) for l in lines)
@@ -210,10 +202,6 @@ def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
         else:
             aligned = [_align_line(extracted[i], line_len, i) for i in range(n_lines)]
         cd_passes, composite_bonus, density = _validation_score(aligned)
-        # Composite ranking: OCR confidence (primary, proven reliable) +
-        # check-digit count and composite bonus as secondary signals.
-        # cd_passes * 0.3 ensures a 1-pass improvement (~0.3) can only override
-        # an OCR confidence gap of 0.03 — meaningful signal, not noise.
         vscore = cd_passes * 1.0 + composite_bonus * 2.0 + density * 0.5
         composite = vscore * 0.3 + ocr_r.mean_confidence * 10.0
         scored.append((composite, ocr_r.mean_confidence, aligned))

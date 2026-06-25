@@ -49,8 +49,7 @@ def _process_frame(
         return None, detection, None
 
     # Check if reconstruction result passes more check digits than any individual engine.
-    # If an individual engine cleanly outscores the reconstruction, prefer it — this can
-    # happen when voting mixes incompatible line offsets and introduces character errors.
+    # If an individual engine cleanly outscores the reconstruction, prefer it — this can, happen when voting mixes incompatible line offsets and introduces character errors.
     recon_cd = _cd_count(reconstructed.lines)
     best_single_lines: Optional[list[str]] = None
     best_single_cd = recon_cd
@@ -106,8 +105,7 @@ def process_image(
         image = source
         stem = "frame"
     else:
-        # Strip leading/trailing whitespace — CLI users sometimes pass paths
-        # with an accidental trailing space (e.g. "file .jpg").
+        # Strip leading/trailing whitespace — CLI users sometimes pass paths, with an accidental trailing space (e.g. "file .jpg").
         source = Path(str(source).strip())
         source = source.resolve()
         stem = source.stem

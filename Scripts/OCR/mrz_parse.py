@@ -50,12 +50,6 @@ _LETTER_TO_DIGIT: dict[str, str] = {"O": "0", "I": "1", "S": "5", "B": "8", "Z":
 
 
 def _apply_class_constraints(data: str, field_type: str) -> str:
-    """Apply positional character-class constraints before check-digit repair.
-
-    date/check-digit fields must be all-digits; country codes must be all-letters.
-    These fixes cover the majority of OCR errors for free before the expensive
-    confusion-table search runs.
-    """
     if field_type == "digits":
         return "".join(_LETTER_TO_DIGIT.get(c, c) if not c.isdigit() and c != "<" else c for c in data)
     if field_type == "letters":
