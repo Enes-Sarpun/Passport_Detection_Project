@@ -1,7 +1,11 @@
+"""MRZ line alignment and scoring helpers.
+
+Despite living under Scripts/OCR (the original multi-engine package), this module
+is now a pure utility set shared by the Tesseract pipeline: line normalisation,
+sliding-window alignment, format detection, and check-digit-based validation
+scoring. It has no OCR-engine dependency.
+"""
 from __future__ import annotations
-from collections import Counter
-from dataclasses import dataclass
-from .ocr import OcrResult
 
 # Canonical line lengths per format.
 TD1_LINES, TD1_LEN = 3, 30
@@ -12,6 +16,7 @@ TD3_LINES, TD3_LEN = 2, 44
 _FILLER_MAP = str.maketrans("k([ ", "<<<<")
 
 _VALID_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<")
+
 
 def _normalize(text: str) -> str:
     text = text.upper().translate(_FILLER_MAP)
@@ -49,7 +54,7 @@ def _align_line(text: str, length: int, line_idx: int) -> str:
 
 
 def _best_aligned_pair(line1_raw: str, line2_raw: str, length: int) -> tuple[str, str]:
-    from .mrz_parse import parse_mrz, check_digit_valid
+    from .mrz_parse import parse_mrz
 
     line1 = _align_line(line1_raw, length, 0)
     line2_norm = _normalize(line2_raw).lstrip("<")
@@ -94,36 +99,13 @@ def detect_format(lines: list[str]) -> tuple[str, int]:
     best = min(dists, key=dists.get)
     return best, {"TD3": TD3_LEN, "TD2": TD2_LEN, "TD1": TD1_LEN}[best]
 
-def _extract_lines(ocr_result: OcrResult, n_lines: int) -> list[str]:
-    lines = [l.text for l in ocr_result.lines[:n_lines]]
-    while len(lines) < n_lines:
-        lines.append("")
-    return lines
-
-def column_vote(candidates: list[str], confidences: list[float], length: int) -> str:
-    snapped = [_snap_line(c, length) for c in candidates]
-    result = []
-    for col in range(length):
-        votes: Counter = Counter()
-        for line, conf in zip(snapped, confidences):
-            ch = line[col]
-            # Down-weight '<' so real characters win over filler ambiguity.
-            weight = conf * 0.5 if ch == "<" else conf
-            votes[ch] += weight
-        result.append(votes.most_common(1)[0][0])
-    return "".join(result)
-
-@dataclass
-class ReconstructedMRZ:
-    fmt: str
-    lines: list[str]
-    line_length: int
-    best_ocr_confidence: float = 0.0
-
-# Minimum per-candidate confidence to participate in column voting.
-_MIN_VOTE_CONFIDENCE = 0.15
 
 def _validation_score(lines: list[str]) -> tuple[int, float, float]:
+    """Return (check_digit_passes, composite_bonus, char_density) for a line pair.
+
+    Used by the Tesseract pipeline to rank candidate line selections: pairs that
+    pass more check digits (and have a valid composite) score higher.
+    """
     if not lines:
         return (0, 0.0, 0.0)
     total_chars = sum(len(l) for l in lines)
@@ -171,59 +153,3 @@ def _validation_score(lines: list[str]) -> tuple[int, float, float]:
         return (cd_passes, composite_bonus, density)
     except Exception:
         return (0, 0.0, density)
-
-
-def reconstruct(ocr_results: list[OcrResult]) -> ReconstructedMRZ:
-    if not ocr_results:
-        return ReconstructedMRZ(fmt="TD3", lines=[], line_length=TD3_LEN)
-
-    # Filter out near-zero-confidence candidates — they add noise to the vote.
-    usable = [r for r in ocr_results if r.lines and r.mean_confidence >= _MIN_VOTE_CONFIDENCE]
-    if not usable:
-        usable = [max(ocr_results, key=lambda r: r.mean_confidence if r.lines else 0.0)]
-
-    # Use the result with the longest max line to infer format.
-    def _max_line_len(r: OcrResult) -> int:
-        return max((len(_normalize(l.text)) for l in r.lines), default=0)
-
-    best_for_format = max(usable, key=lambda r: (_max_line_len(r), len(r.lines)))
-    raw_lines = [_normalize(l.text) for l in best_for_format.lines]
-    fmt, line_len = detect_format(raw_lines)
-    n_lines = {"TD1": 3, "TD2": 2, "TD3": 2}[fmt]
-
-    # Per-candidate alignment & validation scoring.
-    # For 2-line formats we use check-digit-aware line2 alignment to find the correct offset.
-    scored: list[tuple[float, float, list[str]]] = []
-    for ocr_r in usable:
-        extracted = _extract_lines(ocr_r, n_lines)
-        if n_lines == 2:
-            line1, line2 = _best_aligned_pair(extracted[0], extracted[1], line_len)
-            aligned = [line1, line2]
-        else:
-            aligned = [_align_line(extracted[i], line_len, i) for i in range(n_lines)]
-        cd_passes, composite_bonus, density = _validation_score(aligned)
-        vscore = cd_passes * 1.0 + composite_bonus * 2.0 + density * 0.5
-        composite = vscore * 0.3 + ocr_r.mean_confidence * 10.0
-        scored.append((composite, ocr_r.mean_confidence, aligned))
-
-    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
-    best_score, best_conf, best_lines = scored[0]
-
-    # Use the best candidate directly — voting across noisy candidates degrades quality.
-    if best_score > 0.0:
-        return ReconstructedMRZ(fmt=fmt, lines=best_lines, line_length=line_len,
-                                best_ocr_confidence=best_conf)
-
-    # All candidates scored zero — fall back to confidence-weighted column voting.
-    result_lines: list[str] = []
-    for line_idx in range(n_lines):
-        cand_texts = [s[2][line_idx] for s in scored]
-        cand_confs = [max(s[1], 0.01) for s in scored]
-        voted = column_vote(cand_texts, cand_confs, line_len)
-        result_lines.append(voted)
-
-    fallback_conf = max((s[1] for s in scored), default=0.0)
-    return ReconstructedMRZ(fmt=fmt, lines=result_lines, line_length=line_len,
-                            best_ocr_confidence=fallback_conf)
-
-

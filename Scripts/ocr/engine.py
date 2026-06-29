@@ -118,17 +118,20 @@ def _read_image_ocrb(image: np.ndarray, n_lines: int) -> tuple[list[str], float]
         all_confs.extend(confs)
 
     avg_conf = sum(all_confs) / len(all_confs) if all_confs else 0.0
-    return result_lines[:n_lines], avg_conf
+    # Return ALL detected lines — Tesseract often finds a spurious extra line
+    # (border, guilloche, stamp). The pipeline's line-selection stage decides
+    # which lines are the real MRZ; truncating here would drop the data line.
+    return result_lines, avg_conf
 
 
 def run_tesseract_ocrb(image: np.ndarray, n_lines: int = 2) -> TesseractResult:
     raw_lines, conf = _read_image_ocrb(image, n_lines)
 
-    lines: list[TesseractLine] = []
-    for text in raw_lines:
-        lines.append(TesseractLine(text=text, confidence=conf))
+    lines: list[TesseractLine] = [
+        TesseractLine(text=text, confidence=conf) for text in raw_lines
+    ]
 
-    # Pad to n_lines if Tesseract returned fewer
+    # Pad to at least n_lines so downstream code always has something to score.
     while len(lines) < n_lines:
         lines.append(TesseractLine(text="<" * (30 if n_lines >= 3 else 44), confidence=0.0))
 

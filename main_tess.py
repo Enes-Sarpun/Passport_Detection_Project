@@ -11,8 +11,8 @@ and JSON schema as the main OCR pipeline — only the recognition engine differs
 import argparse
 from pathlib import Path
 
-from Scripts.Tesseract.pipeline import process_image
-from Scripts.OCR.schema import to_json
+from Scripts.ocr.pipeline import process_image
+from Scripts.parsing.schema import to_json
 
 
 def main() -> None:
@@ -35,7 +35,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.cmd == "setup":
-        from Scripts.Tesseract.setup_model import download_ocrb_model
+        from Scripts.ocr.setup_model import download_ocrb_model
         download_ocrb_model()
         return
 

@@ -57,15 +57,25 @@ Bu proje, pasaport ve seyahat belgelerinin görüntülerinden **otomatik veri ç
 ```text
 Passport-OCR-YOLO/
 ├── Scripts/
-│   ├── OCR/                # Çözümleme, doğrulama, JSON şeması (her iki hat ortak kullanır)
-│   │   ├── detect.py       #   YOLO MRZ tespiti
+│   ├── detection/          # MRZ tespiti
+│   │   ├── detect.py       #   YOLO ile MRZ bölgesi tespiti
+│   │   └── preprocess.py   #   görüntü kırpma / deskew / kontrast
+│   ├── ocr/                # Tesseract + OCR-B OCR motoru
+│   │   ├── engine.py       #   OCR-B okuma (--oem 1 --psm 6)
+│   │   ├── pipeline.py     #   tespit → OCR → satır seçimi → çözümleme hattı
+│   │   ├── setup_model.py  #   ocrb.traineddata indirici
+│   │   └── tessdata/       #   OCR-B modeli
+│   ├── parsing/            # MRZ çözümleme & çıktı
 │   │   ├── mrz_parse.py    #   ICAO 9303 çözümleme + kontrol hanesi onarımı
-│   │   ├── schema.py       #   Yapılandırılmış JSON çıktısı
-│   │   └── ...
-│   └── Tesseract/          # Tesseract + OCR-B OCR motoru
-│       ├── ocr.py          #   OCR-B okuma (--oem 1 --psm 6)
-│       ├── pipeline.py     #   Ön işleme + çözümleme hattı
-│       └── setup_model.py  #   ocrb.traineddata indirici
+│   │   ├── reconstruct.py  #   satır hizalama & doğrulama skorlama
+│   │   ├── schema.py       #   yapılandırılmış JSON çıktısı + reliability skoru
+│   │   ├── schema_helpers.py
+│   │   └── country_lookup.py
+│   └── YOLO/               # YOLO model ağırlıkları + eğitim notebook'u
+├── GroundTruth/            # Elle doğrulanmış GT + accuracy/kalibrasyon araçları
+│   ├── ground_truth.json
+│   ├── evaluate.py         #   CER + alan doğruluğu ölçümü
+│   └── calibrate.py        #   reliability skoru ağırlık kalibrasyonu
 ├── tests/                  # MRZ çözümleme kabul testleri
 ├── Images/                 # Görüntü verisi (git'e dahil değildir)
 │   ├── MRZ_Data/
@@ -153,26 +163,22 @@ python main_tess.py image "<görüntü yolu>" --output-dir "Images/Outputs"
 {
   "document": {
     "type": { "code": "P", "description": "Passport" },
-    "number": { "value": "U00000261", "confidence": 0.99 },
-    "personal_number": { "value": "12345678901", "confidence": 0.99 },
-    "issuing_country": { "code": "TUR", "name": "Türkiye", "confidence": 0.9 },
+    "number": { "value": "ZD000078", "confidence": 0.99 },
+    "personal_number": { "value": "00000000000", "confidence": 0.99 },
     "mrz_format": "TD3"
   },
   "holder": {
-    "surname": { "value": "ORNEK", "confidence": 0.9 },
-    "given_names": { "value": "ZEYNEP", "confidence": 0.9 },
-    "given_names_list": ["ZEYNEP"],
-    "full_name": "ZEYNEP ORNEK",
-    "nationality": { "code": "TUR", "name": "Türkiye", "confidence": 0.9 },
+    "surname": { "value": "MARTIN", "confidence": 0.91 },
+    "given_names": { "value": "SARAH", "confidence": 0.91 },
+    "given_names_list": ["SARAH"],
+    "full_name": "SARAH MARTIN",
+    "nationality": { "code": "CAN", "name": "Canada", "confidence": 0.91 },
     "sex": { "code": "F", "description": "Female", "confidence": 0.99 }
   },
   "dates": {
-    "date_of_birth": { "raw": "840601", "iso": "1984-06-01", "confidence": 0.99 },
-    "date_of_expiry": { "raw": "150415", "iso": "2015-04-15", "confidence": 0.99 },
-    "age": 42,
-    "is_expired": true,
-    "days_until_expiry": -4089,
-    "validity_period_years": null
+    "date_of_birth": { "raw": "850101", "iso": "1985-01-01", "confidence": 0.99 },
+    "date_of_expiry": { "raw": "180114", "iso": "2018-01-14", "confidence": 0.99 },
+    "is_expired": true
   },
   "validation": {
     "mrz_overall_valid": true,
@@ -180,10 +186,14 @@ python main_tess.py image "<görüntü yolu>" --output-dir "Images/Outputs"
     "auto_repaired_fields": []
   },
   "quality": {
-    "reliability_score": 0.93,
+    "reliability_score": 0.84,
     "rescan_recommended": false
   },
-  "warnings": ["document_expired"]
+  "warnings": ["document_expired"],
+  "raw_mrz": [
+    "P<CANMARTIN<<SARAH<<<<<<<<<<<<<<<<<<<<<<<<<<",
+    "ZD000078<7CAN8501019F1801145<<<<<<<<<<<<<<04"
+  ]
 }
 ```
 
@@ -196,7 +206,7 @@ python main_tess.py image "<görüntü yolu>" --output-dir "Images/Outputs"
 | 1️⃣  | **YOLO**             | Belge görüntüsünde MRZ bölgesini tespit eder ve kırpar.        |
 | 2️⃣  | **Tesseract + OCR-B**| Kırpılan MRZ bölgesindeki karakterleri OCR-B modeliyle okur.   |
 | 3️⃣  | **Parser**           | MRZ satırlarını ICAO 9303'e göre alanlara ayırır.              |
-| 4️⃣  | **Validator**        | Kontrol haneleriyle doğrular, OCR hatalarını otomatik onarır.  |
+| 4️⃣  | **Validator**        | Kontrol haneleriyle doğrular, güvenilirlik skorunu hesaplar.   |
 | 5️⃣  | **Export**           | Sonuçları yapılandırılmış JSON olarak kaydeder.                |
 
 ---

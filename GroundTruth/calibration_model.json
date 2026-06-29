@@ -1,0 +1,13 @@
+{
+  "features": [
+    "mean_field_conf",
+    "structural_fraction"
+  ],
+  "raw_coef": [
+    15.494600658421884,
+    8.693882993447469
+  ],
+  "raw_intercept": -21.984173507024487,
+  "oof_auc": 0.8531499556344277,
+  "oof_brier": 0.13729280837389332
+}

@@ -287,19 +287,37 @@ class MRZResult:
     validation: dict = field(default_factory=dict)
     auto_repaired_fields: list[str] = field(default_factory=list)
 
-def _validate_and_repair(value: str, expected_cd: str, field_name: str, repaired: list[str]) -> tuple[str, bool]:
+def _validate_and_repair(
+    value: str,
+    expected_cd: str,
+    field_name: str,
+    repaired: list[str],
+    allow_search: bool = True,
+    numeric_field: bool = True,
+) -> tuple[str, bool]:
     if check_digit_valid(value, expected_cd):
         return value, True
-    # Apply positional class constraints first (free fix, no search needed).
-    constrained = _apply_class_constraints(value, "digits")
-    if constrained != value and check_digit_valid(constrained, expected_cd):
-        repaired.append(field_name)
-        return constrained, True
-    # Fall back to confusion-table search.
-    fixed = _repair_field(constrained, expected_cd)
-    if fixed is not None:
-        repaired.append(field_name)
-        return fixed, True
+    # Class constraints (letter->digit) only make sense for purely numeric fields
+    # such as dates. The document number is alphanumeric — forcing its letters to
+    # digits (e.g. 'D0000000' -> '00000000') destroys valid data — so it opts out.
+    if numeric_field:
+        constrained = _apply_class_constraints(value, "digits")
+        if constrained != value and check_digit_valid(constrained, expected_cd):
+            repaired.append(field_name)
+            return constrained, True
+    else:
+        constrained = value
+    # Confusion-table search is a *guess*: it mutates characters until the check
+    # digit matches. For free-form fields like the document number this fabricates
+    # plausible-but-wrong values, especially on specimens whose printed check digit
+    # is itself fake. Such fields pass allow_search=False — when the check digit
+    # cannot be matched safely, keep the raw value and report it as invalid.
+    if allow_search:
+        fixed = _repair_field(constrained, expected_cd)
+        if fixed is not None:
+            repaired.append(field_name)
+            return fixed, True
+    # No safe repair: keep the raw OCR value (do not guess) and mark invalid.
     return value, False
 
 def _repair_alpha3(code: str, field_name: str, repaired: list[str]) -> str:
@@ -322,13 +340,26 @@ def parse_td3(line1: str, line2: str) -> MRZResult:
     line2 = line2.ljust(44, "<")[:44]
     repaired: list[str] = []
 
+    from .schema_helpers import _DOC_TYPE_MAP as _DOC_TYPES
     _FILLER_LOOKALIKES = {"V", "U", "W", "N", "M", "T"}
     line1_chars = list(line1)
     if line1_chars[0] in "PICVA" and line1_chars[1] != "<":
         from .country_lookup import resolve_country as _rc
         cand_at_1 = _repair_country_digits("".join(line1_chars[1:4]))
         cand_at_2 = _repair_country_digits("".join(line1_chars[2:5]))
-        if _rc(cand_at_1)["name"] != "Unknown":
+        two_char_type = "".join(line1_chars[0:2])
+        # If the first two characters form a real two-letter document type (PD/PO/
+        # PS/PL/PT/PP/IP/ID/IR/AC) *and* positions 2-4 are a known country code,
+        # this is a genuine two-letter type — not a shifted country code — so leave
+        # it alone. Otherwise the second char is a misread of '<' (e.g. 'PMCHE'
+        # should be 'P<CHE') and we repair as before.
+        genuine_two_char = (
+            two_char_type in _DOC_TYPES
+            and _rc(cand_at_2)["name"] != "Unknown"
+        )
+        if genuine_two_char:
+            pass  # real type like PD<LTU / PO<PRY — keep both characters
+        elif _rc(cand_at_1)["name"] != "Unknown":
             line1_chars.insert(1, "<")
             line1 = "".join(line1_chars[:44]).ljust(44, "<")[:44]
             repaired.append("document_type")
@@ -357,7 +388,7 @@ def parse_td3(line1: str, line2: str) -> MRZResult:
     personal_cd = line2[42]
     composite_cd = line2[43]
 
-    doc_number, doc_valid = _validate_and_repair(doc_number, doc_number_cd, "document_number", repaired)
+    doc_number, doc_valid = _validate_and_repair(doc_number, doc_number_cd, "document_number", repaired, allow_search=False, numeric_field=False)
     birth, birth_valid = _validate_and_repair(birth, birth_cd, "date_of_birth", repaired)
     expiry, expiry_valid = _validate_and_repair(expiry, expiry_cd, "date_of_expiry", repaired)
 
@@ -417,7 +448,7 @@ def parse_td2(line1: str, line2: str) -> MRZResult:
     optional = line2[28:35]
     composite_cd = line2[35]
 
-    doc_number, doc_valid = _validate_and_repair(doc_number, doc_number_cd, "document_number", repaired)
+    doc_number, doc_valid = _validate_and_repair(doc_number, doc_number_cd, "document_number", repaired, allow_search=False, numeric_field=False)
     birth, birth_valid = _validate_and_repair(birth, birth_cd, "date_of_birth", repaired)
     expiry, expiry_valid = _validate_and_repair(expiry, expiry_cd, "date_of_expiry", repaired)
 
@@ -475,7 +506,7 @@ def parse_td1(line1: str, line2: str, line3: str) -> MRZResult:
 
     surname, given, name_dict = parse_name(line3, repaired)
 
-    doc_number, doc_valid = _validate_and_repair(doc_number, doc_number_cd, "document_number", repaired)
+    doc_number, doc_valid = _validate_and_repair(doc_number, doc_number_cd, "document_number", repaired, allow_search=False, numeric_field=False)
     birth, birth_valid = _validate_and_repair(birth, birth_cd, "date_of_birth", repaired)
     expiry, expiry_valid = _validate_and_repair(expiry, expiry_cd, "date_of_expiry", repaired)
 

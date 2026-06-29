@@ -1,0 +1,1198 @@
+{
+  "_meta": {
+    "description": "Manually transcribed MRZ ground truth for Processed_data/images/test. Lines are read directly from each image: uppercase, '<' filler, exact length (TD3=44, TD2=36, TD1=30). A '?' marks a character that could not be read with certainty; such images are listed under _uncertain.",
+    "source_dir": "Images/MRZ_Data/Processed_data/images/test",
+    "uncertain_marker": "?"
+  },
+  "_uncertain": [],
+  "2dfa28dd-TUR-AO-02001_265357": {
+    "format": "TD3",
+    "lines": [
+      "P<TURORNEK<<ZEYNEP<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "U000002613TUR8406011F150415812345678901<<<00"
+    ]
+  },
+  "9fd3f0db-ITA-AS-03001_376361": {
+    "format": "TD3",
+    "lines": [
+      "P<ITAROSSI<<MARIA<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "KF00000016ITA9011012F3307308<<<<<<<<<<<<<<08"
+    ]
+  },
+  "01473330-LSO-AO-01001_106730": {
+    "format": "TD3",
+    "lines": [
+      "P<LSOHLABANA<<MAMOSIENG<ALICE<<<<<<<<<<<<<<<",
+      "DT98076507LSO5207158F0804297P055555<<<<<<<02"
+    ]
+  },
+  "055c2fb8-LBN-AS-03001_289383": {
+    "format": "TD3",
+    "lines": [
+      "P<LBNHADDAD<<SARAH<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "LS00003176LBN8604071F21081510007894562<<<<36"
+    ]
+  },
+  "0761a6e8-LVA-AD-01003_74795_archived": {
+    "format": "TD3",
+    "lines": [
+      "PDLVAAUDRINA<<VAIRA<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "LD00000006LVA7902099F1210082111111<11605<<34"
+    ]
+  },
+  "089cedc3-BEL-AO-03001_71389_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<BELSPECIMEN<<LUCIENNE<<<<<<<<<<<<<<<<<<<<<",
+      "EE173029<0BEL0311063F0412225<<<<<<<<<<<<<<02"
+    ]
+  },
+  "09611adc-SMR-AD-01001_138480": {
+    "format": "TD3",
+    "lines": [
+      "P<SMRAMATI<<ROSA<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "D99106<<<0SMR7007156F1108187456456<<<<<<<<86"
+    ]
+  },
+  "09d10890-LTU-AS-01002_84485": {
+    "format": "TD3",
+    "lines": [
+      "PTLTUBASANAVICIENE<<BIRUTE<<<<<<<<<<<<<<<<<<",
+      "00000000<0LTU5911239F080801145911231023<<<14"
+    ]
+  },
+  "0b0e672a-TLS-AS-02001_120915": {
+    "format": "TD3",
+    "lines": [
+      "<<TLSCASTRO<DE<ARAUJO<<MARIA<DO<ROSARIO<FATI",
+      "S0000000<6TLS6801232F1007246<<<<<<<<<<<<<<<<"
+    ]
+  },
+  "0b1b4546-CYP-AO-04002_385123": {
+    "format": "TD3",
+    "lines": [
+      "P<CYPPOLITIS<<ZINONAS<<<<<<<<<<<<<<<<<<<<<<<",
+      "L000000007CYP8012148M3006151<<<<<<<<<<<<<<08"
+    ]
+  },
+  "0b2f2a80-CHL-AS-01001_111918": {
+    "format": "TD3",
+    "lines": [
+      "POCHLPEREZ<RODRIGUEZ<<PAMELA<ALEJANDRA<<<<<<",
+      "0000000<<8CHL7206100F0903031123456789<<<<<76"
+    ]
+  },
+  "0b8ca720-NPL-AO-01001_219754": {
+    "format": "TD3",
+    "lines": [
+      "P<NPLBASNET<<SHIVANI<<<<<<<<<<<<<<<<<<<<<<<<",
+      "00000000<0NPL8711016F20121791481286<<<<<<<00"
+    ]
+  },
+  "0d1191ee-HUN-AS-02001_70449_archived": {
+    "format": "TD3",
+    "lines": [
+      "PZHUNMINTA<<JUDIT<KATALIN<<<<<<<<<<<<<<<<<<<",
+      "SA03147977HUN7802225F1109151<<<<<<<<<<<<<<02"
+    ]
+  },
+  "0e65313b-MCO-AO-01001_128185": {
+    "format": "TD3",
+    "lines": [
+      "P<MCODUPONT<<JEAN<MICHEL<<<<<<<<<<<<<<<<<<<<",
+      "F009505<8MCO5304286M1108279<<<<<<<<<<<<<<<00"
+    ]
+  },
+  "0f8a07d8-ZMB-AO-01001_199624": {
+    "format": "TD3",
+    "lines": [
+      "P<ZMBSAMPLE<<TASHA<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "ZN000000<4ZMB8301013F1808100000000000<<<<<00"
+    ]
+  },
+  "186645a8-GEO-AD-02003_179160": {
+    "format": "TD3",
+    "lines": [
+      "P<GEOQISHMAREISHVILI<<ZVIADI<<<<<<<<<<<<<<<<",
+      "00DP000802GEO7509018M2002248<<<<<<<<<<<<<<08"
+    ]
+  },
+  "18cf2133-NGA-AO-02001_88100": {
+    "format": "TD3",
+    "lines": [
+      "P<NGAWAZOBIA<<ABUJA<SPECIMEN<<<<<<<<<<<<<<<<",
+      "A000000000NGA6010014M1207161LG12345678912302"
+    ]
+  },
+  "1aee55a0-XKX-AD-02001_381714": {
+    "format": "TD3",
+    "lines": [
+      "D<RKSKOSOVA<<MARIGONA<<<<<<<<<<<<<<<<<<<<<<<",
+      "PD00000004RKS9101092F2106308<<<<<<<<<<<<<<06"
+    ]
+  },
+  "1f5c045e-GBR-AO-04002_258743": {
+    "format": "TD3",
+    "lines": [
+      "P<GBRUK<SPECIMEN<<ANGELA<ZOE<<<<<<<<<<<<<<<<",
+      "5045915074GBS8812049F2106168<<<<<<<<<<<<<<04"
+    ]
+  },
+  "1fa61d3b-MDA-AO-01002_89169_archived": {
+    "format": "TD3",
+    "lines": [
+      "PAMDACIOBANU<<RITA<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "A3429164<9MDA8107178F1802083000000000000<<08"
+    ]
+  },
+  "1ff987d1-LUX-AS-02003_194814": {
+    "format": "TD3",
+    "lines": [
+      "P<LUXMAUS<<KETTY<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "S998668<<8LUX7806201F110808403060021041<<<98"
+    ]
+  },
+  "234e3f88-NOR-AS-05001_238552": {
+    "format": "TD3",
+    "lines": [
+      "PTNORSPECIMEN<<LAERKE<OEYVOR<AASE<<<<<<<<<<<",
+      "00000000<0NOR7505076F19110137197505071234564"
+    ]
+  },
+  "23ad99ff-SOM-AD-04001_300103": {
+    "format": "TD3",
+    "lines": [
+      "P<SOMHAJI<<YASSIN<AHMED<<<<<<<<<<<<<<<<<<<<<",
+      "D000092130SOM7505054M19050432750505681241002"
+    ]
+  },
+  "244e52b3-LIE-AS-02001_143833": {
+    "format": "TD3",
+    "lines": [
+      "P<LIEWALCH<<HANS<PETER<<<<<<<<<<<<<<<<<<<<<<",
+      "S00000<<<6LIE5309052M1201033<<<<<<<<<<<<<<<2"
+    ]
+  },
+  "25afb086-CHN-AO-03001_111215": {
+    "format": "TD3",
+    "lines": [
+      "P<CHNLOK<<SIU<YIU<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "HA00000009CHN7703089F1306112<K645321A<<<<<90"
+    ]
+  },
+  "2a948bad-UZB-AO-02001_259032": {
+    "format": "TD3",
+    "lines": [
+      "P<UZBUMAROV<<ANVAR<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "AA00000000UZB8705208M21110273200587660001008"
+    ]
+  },
+  "2c388b03-ESP-AO-04001_73737": {
+    "format": "TD3",
+    "lines": [
+      "P<ESPESPANOL<ESPANOL<<JUAN<<<<<<<<<<<<<<<<<<",
+      "AJ000162<6ESP6210124M1609259A9999999900<<<40"
+    ]
+  },
+  "2d8ae27f-AUS-AP-05001_298015": {
+    "format": "TD3",
+    "lines": [
+      "P<AUSCITIZEN<<JANE<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "PX09153981AUS8406077F1503014<61047007L<<<<24"
+    ]
+  },
+  "2e11ec19-MAR-AS-02002_165552": {
+    "format": "TD3",
+    "lines": [
+      "PLMAREL<IDRISSI<ADIB<<MOHAMMED<AMINE<<<<<<<<",
+      "SP15934131MAR5406238M1303317XA123456<<<<<<22"
+    ]
+  },
+  "2e6dbc0d-AUS-AO-06001_359725": {
+    "format": "TD3",
+    "lines": [
+      "P<AUSCITIZEN<<JANE<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "RA09920355AUS9105045F3206098<99999000T<<<<80"
+    ]
+  },
+  "3016b82b-FIN-AP-05002_184593_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<FINVIRTANEN<<MARIA<OLIVIA<<<<<<<<<<<<<<<<<",
+      "XB12345650FIN7112214F1708211211271<426U<<<02"
+    ]
+  },
+  "336a9c37-YEM-AO-03001_316133": {
+    "format": "TD3",
+    "lines": [
+      "PRYEMALKEBSI<<MUNEER<MOHAMMED<AHMED<<<<<<<<<",
+      "00000000<0YEM8707291M1904024<<<<<<<<<<<<<<08"
+    ]
+  },
+  "340b8b51-NLD-AS-02001_62192_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<NLDVAN<NIEUWENHUIZEN<<GERARD<ROBBERT<MARTI",
+      "XS038L2474NLD7112247M1108268<<<<<<<<<<<<<<<4"
+    ]
+  },
+  "34ff95aa-SOM-AO-02001_105235": {
+    "format": "TD3",
+    "lines": [
+      "P<SOMBARKADLE<<GELLE<GUTAALE<<<<<<<<<<<<<<<<",
+      "P000000005SOM8205225M0912286N0000025583<<<04"
+    ]
+  },
+  "36cb653a-KOR-AP-01001_232111": {
+    "format": "TD3",
+    "lines": [
+      "PTKORHONG<<KILDONG<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "TC12345677KOR7001017M10010151234567V13288122"
+    ]
+  },
+  "37c2ab47-BLZ-AD-02001_207853": {
+    "format": "TD3",
+    "lines": [
+      "P<BLZMILLER<<PAUL<ASHTON<<<<<<<<<<<<<<<<<<<<",
+      "B0001223<5BLZ9011023M1609271<<<<<<<<<<<<<<08"
+    ]
+  },
+  "39dcb019-LTU-AO-02002_59401_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<LTUBASANAVICIENE<<BIRUTE<<<<<<<<<<<<<<<<<<",
+      "00000000<0LTU5911239F120101145911231023<<<16"
+    ]
+  },
+  "39e50425-SWE-AP-03002_239557_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<SWESPECIMEN<<SVEN<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "45123456<4SWE6103213M0510257196103213499<<40"
+    ]
+  },
+  "3cd758b9-LTU-AO-04002_112517": {
+    "format": "TD3",
+    "lines": [
+      "P<LTUBASANAVICIENE<<BIRUTE<<<<<<<<<<<<<<<<<<",
+      "21810408<0LTU6411231F200101246411231046<<<20"
+    ]
+  },
+  "3db2348d-UKR-AO-01002_157067": {
+    "format": "TD3",
+    "lines": [
+      "P<UKRKOSTASCHUK<<LIUDMYLA<<<<<<<<<<<<<<<<<<<",
+      "TEST<<<<6UKR5007015F1808111<<<<<<<<<<<<<<<02"
+    ]
+  },
+  "3e8c9852-FIN-AD-02001_45999_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<FINMATKAILIJA<<MATTI<<<<<<<<<<<<<<<<<<<<<<",
+      "00000000<0FIN5001013M0612313010150<521X<<<84"
+    ]
+  },
+  "3f969397-FRA-AP-01001_50932": {
+    "format": "TD3",
+    "lines": [
+      "P<FRAPICARD<<VALERIE<<<<<<<<<<<<<<<<<<<<<<<<",
+      "05RF000007FRA6009131F0612014<<<<<<<<<<<<<<00"
+    ]
+  },
+  "3fd627e5-LBR-AD-02001_115650": {
+    "format": "TD3",
+    "lines": [
+      "P<LBRSPECIMEN<<MAMADOU<<<<<<<<<<<<<<<<<<<<<<",
+      "D000000<<1XXX5609246M1403309<<<<<<<<<<<<<<06"
+    ]
+  },
+  "4432c478-EST-AO-01005_59156_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<ESTMAENNIK<<MARI<LIIS<<<<<<<<<<<<<<<<<<<<<",
+      "K0000000<0EST7101010F050501147101010021<<<70"
+    ]
+  },
+  "44b36842-LTU-AD-02001_253187": {
+    "format": "TD3",
+    "lines": [
+      "PDLTURIMAS<<PAVYZDYS<<<<<<<<<<<<<<<<<<<<<<<<",
+      "00000499<4LTU0101011M1104215<<<<<<<<<<<<<<00"
+    ]
+  },
+  "45d2adad-DNK-AD-03001_49521_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<DNKOESTERGAARD<<HANNE<KRISTINE<<<<<<<<<<<<",
+      "0000000000DNK6906056F1412060050669<1178<<<12"
+    ]
+  },
+  "466c12fb-GEO-AO-03001_137888": {
+    "format": "TD3",
+    "lines": [
+      "P<GEOQISHMAREISHVILI<<ZVIADI<<<<<<<<<<<<<<<<",
+      "00AA002336GEO7509018M2002248<<<<<<<<<<<<<<00"
+    ]
+  },
+  "476c8bad-HTI-AO-02001_97359": {
+    "format": "TD3",
+    "lines": [
+      "P<HTISPECIMEN<REGULIER<<PASSEPORT<<<<<<<<<<<",
+      "PP00000000HTI9910252F000101800000000000<<<08"
+    ]
+  },
+  "4820e512-THA-AD-02001_109542": {
+    "format": "TD3",
+    "lines": [
+      "P<THAMADEE<<THANANCHAI<<<<<<<<<<<<<<<<<<<<<<",
+      "D0000000<<1THA6010128M10061911234567789012<16"
+    ]
+  },
+  "4882e678-CZE-AD-02001_52849_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<CZESPECIMEN<<VZOR<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "0000092<<3CZE0002299M01072420002290013<<<<16"
+    ]
+  },
+  "4b8a3481-CZE-AO-04001_96179": {
+    "format": "TD3",
+    "lines": [
+      "P<CZESPECIMEN<<VZOR<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "99009701<7CZE6906229F16080126956220612<<<<74"
+    ]
+  },
+  "4c03efab-ARG-AO-03001_197835": {
+    "format": "TD3",
+    "lines": [
+      "P<ARGVILLAREAL<<MARIA<VICTORIA<<<<<<<<<<<<<<",
+      "ZZZ9911678ARG6911018F2206138999999999<<<<<<84"
+    ]
+  },
+  "4c48f995-TUR-AD-03001_306290": {
+    "format": "TD3",
+    "lines": [
+      "PDTURORNEK<<ZEYNEP<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "P200010150TUR9204029F280402812345678902<<<34"
+    ]
+  },
+  "50f9f0f4-NLD-AD-04001_213218": {
+    "format": "TD3",
+    "lines": [
+      "P<NLDDE<BRUIJN<<WILLEKE<LISELOTTE<<<<<<<<<<<",
+      "SPECI20142NLD6503101F2403096<<<<<<<<<<<<<<<8"
+    ]
+  },
+  "5293740e-ALB-AO-01001_152179_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<ALBSOJLI<<NAJADA<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "Z0000000<5ALB8001014F14061591302031250300138"
+    ]
+  },
+  "54e6ec99-NAM-AO-01001_98357": {
+    "format": "TD3",
+    "lines": [
+      "P<NAMHISOKOHERUA<<DANIELLE<<<<<<<<<<<<<<<<<<",
+      "0001444<<1NAM4510244F060425745102400118<<<68"
+    ]
+  },
+  "54e819c4-NPL-AD-01001_141957": {
+    "format": "TD3",
+    "lines": [
+      "PDNPLBASNET<<SHIVANI<<<<<<<<<<<<<<<<<<<<<<<<",
+      "0000000<<0NPL8711016F20121791481286<<<<<<<00"
+    ]
+  },
+  "5616a004-FIN-AS-05001_180647_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<FINVIRTANEN<<MARIA<OLIVIA<<<<<<<<<<<<<<<<<",
+      "XV12345650FIN7112214F1708222211271<426U<<<06"
+    ]
+  },
+  "570f5bca-DEU-AO-01003_59752_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<D<<MUSTERMANN<<ERIKA<<<<<<<<<<<<<<<<<<<<<<",
+      "1220001356D<<5708127F0704021<<<<<<<<<<<<<<<0"
+    ]
+  },
+  "57f26207-SUR-AD-01001_372738": {
+    "format": "TD3",
+    "lines": [
+      "PDSURSMOAK<<KYLE<JUSTIN<<<<<<<<<<<<<<<<<<<<<",
+      "DP10029736SUR8401119M2601010AB001122<<<<<<76"
+    ]
+  },
+  "5a51ac66-NAM-AD-02001_367218": {
+    "format": "TD3",
+    "lines": [
+      "PDNAMSAMPLE<<SANDRA<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "D0000000<1NAM8605010F2212315000000000000<<00"
+    ]
+  },
+  "5b32c908-IRL-AP-02001_296348": {
+    "format": "TD3",
+    "lines": [
+      "P<IRLOSULLIVAN<<LAUREN<<<<<<<<<<<<<<<<<<<<<<",
+      "X073262<<5IRL8805049F1409138<<<<<<<<<<<<<<<4"
+    ]
+  },
+  "5b7dc003-NLD-AD-03001_144792_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<NLDDE<BRUIJN<<WILLEKE<LISELOTTE<<<<<<<<<<<",
+      "XK11H01L00NLD6503101F1610202<<<<<<<<<<<<<<<8"
+    ]
+  },
+  "5c37f324-MDA-AS-02001_206144": {
+    "format": "TD3",
+    "lines": [
+      "PSMDACIOBANU<<RITA<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "S0006281<5MDA8107178F1704121000000000000<<08"
+    ]
+  },
+  "5cc542e8-HRV-AD-02001_220297": {
+    "format": "TD3",
+    "lines": [
+      "PDHRVSPECIMEN<<SPECIMEN<<<<<<<<<<<<<<<<<<<<<",
+      "0070070071HRV8212258F1407019<<<<<<<<<<<<<<06"
+    ]
+  },
+  "5cc9dcb7-LUX-AD-02005_255901": {
+    "format": "TD3",
+    "lines": [
+      "P<LUXSPECIMEN<<VANESSA<<<<<<<<<<<<<<<<<<<<<<",
+      "JD5V2J7N<7LUX9303092F200122902150000008<<<68"
+    ]
+  },
+  "5ce11d4f-MCO-AD-01001_132413": {
+    "format": "TD3",
+    "lines": [
+      "P<MCODUPONT<<JEAN<MICHEL<<<<<<<<<<<<<<<<<<<<",
+      "P000501<<7MCO5304286M0908276<<<<<<<<<<<<<<04"
+    ]
+  },
+  "5d2e7d7c-AUT-AO-01001_40337_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<AUTMUSTERFRAU<<ISOLDE<<<<<<<<<<<<<<<<<<<<<",
+      "F9999902<6AUT1111112F1412026<<<<<<<<<<<<<<<2"
+    ]
+  },
+  "5e656b65-NLD-AO-03002_144751_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<NLDDE<BRUIJN<<WILLEKE<LISELOTTE<<<<<<<<<<<",
+      "XJ1F101624NLD6503101F1610202999999990<<<<<86"
+    ]
+  },
+  "5f132cb1-DNK-AO-05001_160309": {
+    "format": "TD3",
+    "lines": [
+      "P<DNKOESTERGAARD<<HANNE<KRISTINE<<<<<<<<<<<<",
+      "0000000000DNK8510068F2202015061085<1178<<<58"
+    ]
+  },
+  "5f48595a-CHN-AO-04003_131691": {
+    "format": "TD3",
+    "lines": [
+      "P<CHNLOI<<HANG<MIO<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "MA00000004CHN8807191F190305010004067<<<<<<28"
+    ]
+  },
+  "6325c7e4-THA-AS-03001_109576": {
+    "format": "TD3",
+    "lines": [
+      "P<THASAE<CHUA<<WIPARAT<<<<<<<<<<<<<<<<<<<<<<",
+      "F000000<<5THA8010122F10061911234567789012<16"
+    ]
+  },
+  "60d693d1-KGZ-AO-02001_359484": {
+    "format": "TD3",
+    "lines": [
+      "P<KGZASANOV<<USON<JANYBAEVICH<<<<<<<<<<<<<<<",
+      "PE00000007KGZ9905094M30020272090519990000086"
+    ]
+  },
+  "63e3e327-TUR-AO-03001_306152": {
+    "format": "TD3",
+    "lines": [
+      "P<TURORNEK<<ZEYNEP<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "U200417743TUR9204029F280402812345678902<<<38"
+    ]
+  },
+  "65336c60-KNA-AD-01001_214956": {
+    "format": "TD3",
+    "lines": [
+      "P<KNASPECIMEN<<JOAN<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "DZ00000039KNA8309190F1511103B<4444<<<<<<<<50"
+    ]
+  },
+  "65271fcd-ZAF-AO-01001_76159": {
+    "format": "TD3",
+    "lines": [
+      "PPZAFANTHONY<<MONICA<DOREEN<<<<<<<<<<<<<<<<<",
+      "4322643486ZAF3908200F11112823908200125087<78"
+    ]
+  },
+  "66f82f2e-KWT-AD-01001_279765": {
+    "format": "TD3",
+    "lines": [
+      "PDKWTALSUMAIT<<MOHAMMAD<ABDULA<MOHAMMAD<HAMA",
+      "D000000001KWT8401016M211010287334332200<<<54"
+    ]
+  },
+  "696df542-MEX-AD-02001_145771": {
+    "format": "TD3",
+    "lines": [
+      "P<MEXCASTANEDA<DE<LA<PARRA<<BERNARDO<<<<<<<<",
+      "D0034160<7MEX7002184M1212237<<<<<<<<<<<<<<02"
+    ]
+  },
+  "6ad17d9c-NIC-AS-01001_91181": {
+    "format": "TD3",
+    "lines": [
+      "P<NICDELGADO<SAENZ<<MARIO<<<<<<<<<<<<<<<<<<<",
+      "B0000000<7NIC4210234M060908912071996201<<<06"
+    ]
+  },
+  "6d55779e-BGD-AO-02001_153127": {
+    "format": "TD3",
+    "lines": [
+      "P<BGDGAFFAR<<ABUJAR<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "AA00000000BGD8901206M15050182692618511462<58"
+    ]
+  },
+  "6eec5038-CUB-AS-01001_105150": {
+    "format": "TD3",
+    "lines": [
+      "P<CUBSANTANA<VILLARRUEL<<LUIS<FABIAN<<<<<<<<",
+      "S0000000<6CUB6201108M0606103620110114870<<92"
+    ]
+  },
+  "7235b515-ESP-AD-01003_72759": {
+    "format": "TD3",
+    "lines": [
+      "PDESPESPANXXOL<ESPANXXOL<<JUAN<<<<<<<<<<<<<<",
+      "XF000605<7ESP4101019M1003271<<DIPL<<2007<<44"
+    ]
+  },
+  "7707e3cb-USA-AO-05001_336996": {
+    "format": "TD3",
+    "lines": [
+      "P<USATRAVELER<<HAPPY<<<<<<<<<<<<<<<<<<<<<<<<",
+      "E000078137USA6502056M3007099340005071<089728"
+    ]
+  },
+  "7719c00e-PRK-AD-02001_274387": {
+    "format": "TD3",
+    "lines": [
+      "PDPRKKIM<<MYONG<CHOL<<<<<<<<<<<<<<<<<<<<<<<<",
+      "7453389292PRK7111309M2110019<<<<<<<<<<<<<<<2"
+    ]
+  },
+  "77a060f6-BEL-AD-03002_294869_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<BELSPECIMEN<<EMMA<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "LA000000<7BEL8412184F2203274<<<<<<<<<<<<<<04"
+    ]
+  },
+  "78bb277b-NZL-AD-03002_143517": {
+    "format": "TD3",
+    "lines": [
+      "P<NZLWHAKAATURANGA<<FRED<WIREMU<JOHN<<<<<<<<",
+      "LD001148<2NZL6402282M1410055<<<<<<<<<<<<<<00"
+    ]
+  },
+  "7a6326a8-NLD-AO-01001_40381_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<NLDMEULENDIJK<<LOES<ALBERTINE<<<<<<<<<<<<<",
+      "XA01836498NLD7110195F0610010123456782<<<<<00"
+    ]
+  },
+  "7a6c9b50-NIC-AD-01001_89980": {
+    "format": "TD3",
+    "lines": [
+      "P<NICDELGADO<SAENZ<<MARIO<<<<<<<<<<<<<<<<<<<",
+      "A0000000<0NIC4210234M060908912071996201<<<00"
+    ]
+  },
+  "7cbc03bc-CHE-AS-03002_147929": {
+    "format": "TD3",
+    "lines": [
+      "POCHEDE<MAIENFELD<<VRENI<<<<<<<<<<<<<<<<<<<<",
+      "S2300023<8CHE9108013F2002293<<<<<<<<<<<<<<<0"
+    ]
+  },
+  "7f941dce-NZL-AP-01001_211409": {
+    "format": "TD3",
+    "lines": [
+      "P<NZLWHAKAATURANGA<<FRED<WIREMU<JOHN<<<<<<<<",
+      "TD100009<0NZL6311010M1011131<<<<<<<<<<<<<<00"
+    ]
+  },
+  "800d65bd-TUR-AS-03002_306474": {
+    "format": "TD3",
+    "lines": [
+      "P<TURORNEK<<ZEYNEP<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "S200177322TUR9204029F280402812345678902<<<30"
+    ]
+  },
+  "8110c0e5-SWE-AP-04001_158705_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<SWESPECIMEN<<SVEN<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "59000005<7SWE8703145M1208021198703142391<<48"
+    ]
+  },
+  "8482b028-DEU-AO-04004_371436": {
+    "format": "TD3",
+    "lines": [
+      "P<D<<MUSTERMANN<<ERIKA<<<<<<<<<<<<<<<<<<<<<<",
+      "CZ63351X73D<<8308126F34050192405<<<<<<<<<<18"
+    ]
+  },
+  "84917787-LBN-AO-01001_96683": {
+    "format": "TD3",
+    "lines": [
+      "P<LBNSERHAN<<FADY<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "0000000<<0LBN7001017M08010231629335<<<<<<<72"
+    ]
+  },
+  "86782de7-COG-AD-02001_82253": {
+    "format": "TD3",
+    "lines": [
+      "AOCOGGUILLOND<<AIME<CLOVIS<<<<<<<<<<<<<<<<<<",
+      "D0015008<7COG6203124M1212026<<<<<<<<<<<<<<<8"
+    ]
+  },
+  "86f8a3d8-THA-AO-01002_262856_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<THAATTHAKOR<<SATCHAPHAND<<<<<<<<<<<<<<<<<<",
+      "G000000<<2THA4704269M05063065101700011057<82"
+    ]
+  },
+  "8758830e-NOR-AO-02001_29664": {
+    "format": "TD3",
+    "lines": [
+      "PVNORHOLM<<ALIAS<LARS<<<<<<<<<<<<<<<<<<<<<<<",
+      "12345678<8NOR4205076M08120101942050712345<42"
+    ]
+  },
+  "87cd399a-MLI-AO-02001_113953": {
+    "format": "TD3",
+    "lines": [
+      "P<MLIDEMBELE<<IBRAHIMA<<<<<<<<<<<<<<<<<<<<<<",
+      "0000000<<0MLI4901013M1201181<<<<<<<<<<<<<<08"
+    ]
+  },
+  "89690353-ARG-AO-01001_15126_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<UTOSMITH<<JANE<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "74150434<4UTO7112052F9508059<<<<<<<<<<<<<<04"
+    ]
+  },
+  "899eccdc-SGP-AS-05001_301294": {
+    "format": "TD3",
+    "lines": [
+      "PBSGPWONG<<KARA<YUN<EN<<<<<<<<<<<<<<<<<<<<<<",
+      "J0000000E7SGP7705038F2210300S7788888H<<<<<92"
+    ]
+  },
+  "89c6875e-CHE-AS-01001_175460": {
+    "format": "TD3",
+    "lines": [
+      "PFCHEMODELLO<<FELICE<AURELIO<<<<<<<<<<<<<<<<",
+      "S0600548<9CHE6307125M0304041<<<<<<<<<<<<<<<2"
+    ]
+  },
+  "8b860bbe-AND-AO-03001_299231": {
+    "format": "TD3",
+    "lines": [
+      "S<ANDPONS<FONT<<GUILLEM<<<<<<<<<<<<<<<<<<<<<",
+      "S4000045<1AND7802144M2702102265143G003326218"
+    ]
+  },
+  "8b9eda74-XOM-AD-02001_342446": {
+    "format": "TD3",
+    "lines": [
+      "P<XOMMUSTERMANN<<MAX<<<<<<<<<<<<<<<<<<<<<<<<",
+      "D00022<<<9UTO7201013M1511217<<<<<<<<<<<<<<<8"
+    ]
+  },
+  "8e7bbc01-BEL-AO-11001_353058": {
+    "format": "TD3",
+    "lines": [
+      "P<BELSPECIMEN<<OLIVIA<<<<<<<<<<<<<<<<<<<<<<<",
+      "GA00000002UTO9707210F2902061<<<<<<<<<<<<<<06"
+    ]
+  },
+  "942324f7-NOR-AO-04001_165571": {
+    "format": "TD3",
+    "lines": [
+      "PVNORNORMANN<<KARI<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "00000000<0NOR7505319F21020784197505311234584"
+    ]
+  },
+  "9ef7bc3c-FIN-AP-05001_180800_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<FINVIRTANEN<<MARIA<OLIVIA<<<<<<<<<<<<<<<<<",
+      "XT12345698FIN7112214F1708211211271<426U<<<06"
+    ]
+  },
+  "9fb566fc-KEN-AO-03001_295758": {
+    "format": "TD3",
+    "lines": [
+      "P<KENDE<LA<RUE<<ANGUS<<<<<<<<<<<<<<<<<<<<<<<",
+      "AK900023<2UTO9001011F221231501234<<<<<<<<<82"
+    ]
+  },
+  "9509d550-MCO-AS-03001_343941": {
+    "format": "TD3",
+    "lines": [
+      "P<MCOSPECIMEN<EEQ<<PRENOM<<<<<<<<<<<<<<<<<<<",
+      "E000066<<6MCO5304286M2602213<<<<<<<<<<<<<<<0"
+    ]
+  },
+  "a0201c68-HUN-AD-02002_74497_archived": {
+    "format": "TD3",
+    "lines": [
+      "PSHUNMINTA<<JUDIT<KATALIN<<<<<<<<<<<<<<<<<<<",
+      "PS10993063HUN7802225F1109151<<<<<<<<<<<<<<00"
+    ]
+  },
+  "a0a3e999-DNK-AO-04002_73391": {
+    "format": "TD3",
+    "lines": [
+      "P<DNKUR<LIDINI<<SOLEYD<ARNADOTTIR<<<<<<<<<<<",
+      "0000000000DNK6906056F1703010<<<<<<<<<<<<<<04"
+    ]
+  },
+  "a10297a7-TUN-AO-01001_90145": {
+    "format": "TD3",
+    "lines": [
+      "P<TUNSPECIMEN<<MAHMOUD<<<<<<<<<<<<<<<<<<<<<<",
+      "Y777777<<2TUN4911117M080912202587989<0001<70"
+    ]
+  },
+  "a3a866a4-FRA-AS-04001_308519": {
+    "format": "TD3",
+    "lines": [
+      "P<FRASPECIMEN<<NATACHA<<<<<<<<<<<<<<<<<<<<<<",
+      "61RF521539FRA7307122F1603062<<<<<<<<<<<<<<04"
+    ]
+  },
+  "a1893a4a-YEM-AS-02001_108494": {
+    "format": "TD3",
+    "lines": [
+      "PCYEMALKERSH<<HANI<ABDULLAH<MOHAMMED<<<<<<<<",
+      "00000000<0YEM7709106M1001129<<<<<<<<<<<<<<08"
+    ]
+  },
+  "a1aedb0d-NZL-AO-01001_90521": {
+    "format": "TD3",
+    "lines": [
+      "P<NZLCITIZEN<<FRED<WIREMU<JOHN<<<<<<<<<<<<<<",
+      "F000130<<1NZL6311010M1003112<<<<<<<<<<<<<<<2"
+    ]
+  },
+  "a40d8d26-GIN-AO-02001_271657": {
+    "format": "TD3",
+    "lines": [
+      "POGINSYLLA<<IBRAHIMA<SORY<<<<<<<<<<<<<<<<<<<",
+      "0000000008GIN7605024M19012415001030100013004"
+    ]
+  },
+  "a8ad3694-MNG-AO-01001_372571": {
+    "format": "TD3",
+    "lines": [
+      "PEMNGCHULUUNBAATAR<<DELGERBAYAR<<<<<<<<<<<<<",
+      "PE12345675MNG8601207M3302163G<E<<86012015<74"
+    ]
+  },
+  "a98b18b7-PRT-AO-01003_123072": {
+    "format": "TD3",
+    "lines": [
+      "P<PRTGARCAO<MAGALHAES<<INES<<<<<<<<<<<<<<<<<",
+      "I000006<<8PRT7404076F1108280BI00000000<<<<14"
+    ]
+  },
+  "aa933b7f-GHA-AD-02001_117380": {
+    "format": "TD3",
+    "lines": [
+      "P<GHASPECIMEN<<FEMALE<<<<<<<<<<<<<<<<<<<<<<<",
+      "D0000002<7GHA7901014F1408142<<<<<<<<<<<<<<<4"
+    ]
+  },
+  "affb57e4-BLR-AO-02001_96816": {
+    "format": "TD3",
+    "lines": [
+      "P<BLRIVANOVA<<TATSIANA<<<<<<<<<<<<<<<<<<<<<<",
+      "0000000000BLR7001017F15010104010160B000PB326"
+    ]
+  },
+  "a9ecb47b-CZE-AS-04001_152697": {
+    "format": "TD3",
+    "lines": [
+      "PSCZESPECIMEN<<VZOR<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "S9900252<5CZE5005228M1608207500522123<<<<<40"
+    ]
+  },
+  "b1737893-CUB-AO-01001_223995": {
+    "format": "TD3",
+    "lines": [
+      "P<CUBRODRIGUEZ<MELIAN<<MERCEDES<<<<<<<<<<<<<",
+      "C0000000<4CUB6009245F060607760092410396<<<60"
+    ]
+  },
+  "b3d9eef8-NLD-AO-06001_378556": {
+    "format": "TD3",
+    "lines": [
+      "PPNLDDE<BRUIJN<<WILLEKE<LISELOTTE<<<<<<<<<<<",
+      "SPECI20245NLD8003100F3407172<<<<<<<<<<<<<<<2"
+    ]
+  },
+  "b5184b19-BEL-AS-04001_328721": {
+    "format": "TD3",
+    "lines": [
+      "P<BELSPECIMEN<<EMMA<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "LD000000<6BEL9412217F2402295<<<<<<<<<<<<<<00"
+    ]
+  },
+  "b6b95239-LTU-AO-04005_370778": {
+    "format": "TD3",
+    "lines": [
+      "P<LTUBASANAVICIENE<<BIRUTE<<<<<<<<<<<<<<<<<<",
+      "26561395<3LTU9003118F340102249003111045<<<88"
+    ]
+  },
+  "b73cd15b-MNG-AO-01001_372571": {
+    "format": "TD3",
+    "lines": [
+      "PEMNGCHULUUNBAATAR<<DELGERBAYAR<<<<<<<<<<<<<",
+      "PE12345675MNG8601207M3302163G<E<<86012015<74"
+    ]
+  },
+  "b590b85c-BGR-AO-01005_16971_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<BGRIVANOVA<<RALITSA<RADNEVA<<<<<<<<<<<<<<<",
+      "0399033566BGR7608014F08080777608010133<<<<12"
+    ]
+  },
+  "b7579ae6-XOM-AS-02001_226092": {
+    "format": "TD3",
+    "lines": [
+      "P<XOMMUSTERMANN<<MAX<<<<<<<<<<<<<<<<<<<<<<<<",
+      "S00000<<<6UTO7201013M0711216<<<<<<<<<<<<<<<6"
+    ]
+  },
+  "b8978d73-NZL-AD-03003_311436": {
+    "format": "TD3",
+    "lines": [
+      "P<NZLWATA<<AROHA<MERE<TERESA<<<<<<<<<<<<<<<<",
+      "LD100242<3NZL9010015F2512163<<<<<<<<<<<<<<00"
+    ]
+  },
+  "bab80e13-CHN-AD-01001_363135": {
+    "format": "TD3",
+    "lines": [
+      "PDCHNYANG<<ZHAO<<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "DE00000003CHN8509037F2611158NB00NFNB<<<<A912"
+    ]
+  },
+  "bb3617da-TGO-AS-03001_125308": {
+    "format": "TD3",
+    "lines": [
+      "P<TGOANATO<<CLOUTCHET<<<<<<<<<<<<<<<<<<<<<<<",
+      "XS000288<7TGO5612318M1410055<<<<<<<<<<<<<<06"
+    ]
+  },
+  "bc7aac79-KOR-AS-03002_151521": {
+    "format": "TD3",
+    "lines": [
+      "POKORHONG<<KIL<DONG<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "G113906774KOR7501012M13031001234569V14788632"
+    ]
+  },
+  "bda9b259-ISL-AS-05001_325126": {
+    "format": "TD3",
+    "lines": [
+      "PSISLSPECIMEN<<THAEOE<SPECIMEN<<<<<<<<<<<<<<",
+      "S6110005<7ISL1212123F2902050121212<1239<<<62"
+    ]
+  },
+  "be196135-NZL-AO-03002_143306": {
+    "format": "TD3",
+    "lines": [
+      "P<NZLWHAKAATURANGA<<FRED<WIREMU<JOHN<<<<<<<<",
+      "LA001801<1NZL6401274M1410066<<<<<<<<<<<<<<02"
+    ]
+  },
+  "c3c138dc-CHN-AO-05001_187129": {
+    "format": "TD3",
+    "lines": [
+      "POCHNZHENGJIAN<<YANGBEN<<<<<<<<<<<<<<<<<<<<<",
+      "E000000008CHN8310291F2202059NGKELMPONBPJB972"
+    ]
+  },
+  "c7af7b65-FIN-AP-04001_71640_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<FINVIRTANEN<SIG<<<MARIA<OLIVIA<<<<<<<<<<<<",
+      "XT90169962FIN7112214F0711294211271<926D<<<04"
+    ]
+  },
+  "ca2e87c5-SGP-AO-04001_97060": {
+    "format": "TD3",
+    "lines": [
+      "PASGPNG<<LINDA<ZEE<ZEE<<<<<<<<<<<<<<<<<<<<<<",
+      "X3000599A5SGP7706275F1008232S7788888H<<<<<94"
+    ]
+  },
+  "ccd91b8b-MEX-AO-03001_355518": {
+    "format": "TD3",
+    "lines": [
+      "P<MEXMEDINA<PEREZ<<ABIGAIL<<<<<<<<<<<<<<<<<<",
+      "J000000014MEX8101176M1806128<<<<<<<<<<<<<<02"
+    ]
+  },
+  "cd1e76cf-DMA-AO-03001_359833": {
+    "format": "TD3",
+    "lines": [
+      "P<DMASPECIMEN<<JOHN<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "RZ000027<9DMA7509270M3109270<<<<<<<<<<<<<<00"
+    ]
+  },
+  "ce4ce971-POL-AD-02001_46586": {
+    "format": "TD3",
+    "lines": [
+      "PDPOLKOWALSKI<<JAN<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "DD99990765POL5504042M0702223<<<<<<<<<<<<<<00"
+    ]
+  },
+  "ce77e862-SOM-AD-03001_100164": {
+    "format": "TD3",
+    "lines": [
+      "PDSOMBARKADLE<<GELLE<GUTAALE<<<<<<<<<<<<<<<<",
+      "D000000001SOM8205225M0912286N0000025583<<<02"
+    ]
+  },
+  "d00daf6a-LVA-AS-01002_73157_archived": {
+    "format": "TD3",
+    "lines": [
+      "PSLVABERZINA<<LAIMA<LAIMDOTA<<<<<<<<<<<<<<<<",
+      "LS00000001LVA8102014F1210082111111<11533<<38"
+    ]
+  },
+  "d197a7db-FRA-AO-02001_53288": {
+    "format": "TD3",
+    "lines": [
+      "P<FRABERTHIER<<CORINNE<<<<<<<<<<<<<<<<<<<<<<",
+      "91AA899068FRA6512068F0404262<<<<<<<<<<<<<<<0"
+    ]
+  },
+  "d1d67f72-BRN-AO-01001_108980": {
+    "format": "TD3",
+    "lines": [
+      "P<BRNSUHANA<BINTI<HAJI<SUDIN<<<<<<<<<<<<<<<<",
+      "253972<<<8BRN7209259F0307097<<<<<<<<<<<<<<00"
+    ]
+  },
+  "d1b01147-IRL-AO-02001_371786_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<IRLSAMPLE<<MACHINE<READABLE<<<<<<<<<<<<<<<",
+      "R922010<<3IRL7001224M1311037<<<<<<<<<<<<<<<8"
+    ]
+  },
+  "d29f9dcf-PRK-AP-01001_144632": {
+    "format": "TD3",
+    "lines": [
+      "PEPRKHONG<<HYANG<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "2901400055PRK9403039F1105119<<<<<<<<<<<<<<<0"
+    ]
+  },
+  "d5a5d61c-THA-AO-02002_267031": {
+    "format": "TD3",
+    "lines": [
+      "P<THAANAN<<SRITHANON<<<<<<<<<<<<<<<<<<<<<<<<",
+      "AA11234566THA8001014M17112241234567890123<38"
+    ]
+  },
+  "d5514683-AZE-AO-03001_379990": {
+    "format": "TD3",
+    "lines": [
+      "PCAZEHUSEYNLI<<ORKHAN<<<<<<<<<<<<<<<<<<<<<<<",
+      "X050001070AZE7503153M340710530LJV5Z<<<<<<<86"
+    ]
+  },
+  "d5eab6f1-IRL-AO-05001_267208": {
+    "format": "TD3",
+    "lines": [
+      "P<IRLOSULLIVAN<<LAUREN<<<<<<<<<<<<<<<<<<<<<<",
+      "XN50042162IRL8805049F2309154<<<<<<<<<<<<<<<6"
+    ]
+  },
+  "e3399d6a-KOR-AD-01002_87190": {
+    "format": "TD3",
+    "lines": [
+      "PDKORJUNG<<KYEON<BON<<<<<<<<<<<<<<<<<<<<<<<<",
+      "DR12345670KOR6201016M10031121234567<<<<<<<42"
+    ]
+  },
+  "e9bddee7-LVA-AD-02001_322977": {
+    "format": "TD3",
+    "lines": [
+      "PDLVAAUDRINA<<VAIRA<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "LD90022160LVA7902099F2007151111111<11605<<34"
+    ]
+  },
+  "eef27b2f-LBR-AO-04001_344722": {
+    "format": "TD3",
+    "lines": [
+      "P<LBRSPECIMEN<<SAMPLE<<<<<<<<<<<<<<<<<<<<<<<",
+      "PP00000000LBR9007264F2207250<<<<<<<<<<<<<<<6"
+    ]
+  },
+  "ef9252f5-MAR-AP-01001_167965": {
+    "format": "TD3",
+    "lines": [
+      "PPMARBEN<AHMED<<MOHAMED<<<<<<<<<<<<<<<<<<<<<",
+      "SP00002946MAR6404253M1105197X999999<<<<<<<90"
+    ]
+  },
+  "effb69b5-LTU-AS-01001_75408_archived": {
+    "format": "TD3",
+    "lines": [
+      "PTLTUBASANAVICIENE<<BIRUTE<<<<<<<<<<<<<<<<<<",
+      "00000000<0LTU5911239F080801145911231023<<<14"
+    ]
+  },
+  "efff1287-LBN-AD-02001_287577": {
+    "format": "TD3",
+    "lines": [
+      "P<LBNDOE<<JOHN<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "999D16<<<9LBN6503215M1705254<<<<<<<<<<<<<<<6"
+    ]
+  },
+  "f4e8981e-DEU-AO-01002_59704_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<D<<MUSTERMANN<<ERIKA<<<<<<<<<<<<<<<<<<<<<<",
+      "1220001046D<<5708127F0704021<<<<<<<<<<<<<<<0"
+    ]
+  },
+  "f7e44c60-KAZ-AO-02001_103131": {
+    "format": "TD3",
+    "lines": [
+      "P<KAZTOISHIBEKOV<<AITBAY<<<<<<<<<<<<<<<<<<<<",
+      "N000000001KAZ5407154M1312089540715300207<<68"
+    ]
+  },
+  "fcc2270d-EST-AD-01002_71935": {
+    "format": "TD3",
+    "lines": [
+      "PDESTMAENNIK<<MARI<LIIS<<<<<<<<<<<<<<<<<<<<<",
+      "DB00000004EST7501229F120522647501220010<<<00"
+    ]
+  },
+  "fcf34f0a-LUX-AO-03001_207146_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<LUXSPECIMEN<<JEANNE<<<<<<<<<<<<<<<<<<<<<<<",
+      "G2A0312<<2LUX8806231F16061660110011397<<<<88"
+    ]
+  },
+  "fe8fb076-MLT-AO-05001_364872": {
+    "format": "TD3",
+    "lines": [
+      "P<MLTCAMILLERI<<MARIA<<<<<<<<<<<<<<<<<<<<<<<",
+      "TM000000<9MLT8410135F29100571234567M<<<<<<04"
+    ]
+  },
+  "ff07688f-NLD-AO-01002_57520_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<NLDMEULENDIJK<<LOES<ALBERTINE<<<<<<<<<<<<<",
+      "XA00580912NLD7110195F0610010123456782<<<<<02"
+    ]
+  },
+  "cc35be15-NZL-AO-03001_112923": {
+    "format": "TD3",
+    "lines": [
+      "P<NZLCITIZEN<<FRED<WIREMU<JOHN<<<<<<<<<<<<<<",
+      "EA000623<7NZL6311010M1008265<<<<<<<<<<<<<<00"
+    ]
+  },
+  "cc5681f1-TWN-AO-01002_110313_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<TWNLIN<<MEI<HUA<<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "0000000000TWN7601015F1309010A234567893<<<<18"
+    ]
+  },
+  "d70df7a2-DOM-AO-02001_261732": {
+    "format": "TD3",
+    "lines": [
+      "P<DOMFORTUNA<RAMIREZ<<LUCY<IRENE<<<<<<<<<<<<",
+      "SC14881686DOM9502150F160806700100000001<<<46"
+    ]
+  },
+  "d9a6e776-AUT-AD-02003_358484": {
+    "format": "TD3",
+    "lines": [
+      "P<AUTMUSTERFRAU<<MARIA<<<<<<<<<<<<<<<<<<<<<<",
+      "U1234567<6AUT8112314F2412182<<<<<<<<<<<<<<<6"
+    ]
+  },
+  "db4b23ff-MDA-AO-01003_153428": {
+    "format": "TD3",
+    "lines": [
+      "PAMDACIOBANU<<RITA<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "B0000000<7MDA8004185F1801019000000000000<<04"
+    ]
+  },
+  "d8cfbf27-MCO-AO-02001_343716": {
+    "format": "TD3",
+    "lines": [
+      "P<MCOSPECIMEN<AAM<<PRENOM<<<<<<<<<<<<<<<<<<<",
+      "A000074<<5MCO5304286M3102215<<<<<<<<<<<<<<<0"
+    ]
+  },
+  "dc1ca006-AUS-AS-01001_93777": {
+    "format": "TD3",
+    "lines": [
+      "P<AUSCITIZEN<<JOHN<<<<<<<<<<<<<<<<<<<<<<<<<<",
+      "F0991602<2AUS6906126M1312012X3C262VPCJA1M082"
+    ]
+  },
+  "dcce70ca-MCO-AS-03001_343941": {
+    "format": "TD3",
+    "lines": [
+      "P<MCOSPECIMEN<EEQ<<PRENOM<<<<<<<<<<<<<<<<<<<",
+      "E000066<<6MCO5304286M2602213<<<<<<<<<<<<<<<0"
+    ]
+  },
+  "dd68bc4f-DEU-AP-03001_57874_archived": {
+    "format": "TD3",
+    "lines": [
+      "PPD<<MUSTERMANN<<ERIKA<<<<<<<<<<<<<<<<<<<<<<",
+      "A<00000000D<<6408125F0501013<<<<<<<<<<<<<<<8"
+    ]
+  },
+  "e0a4c579-DNK-AS-02001_45616_archived": {
+    "format": "TD3",
+    "lines": [
+      "P<DNKOESTERGAARD<<HANNE<KRISTINE<<<<<<<<<<<<",
+      "9900019749DNK6906056F0309242050669<1178<<<10"
+    ]
+  }
+}

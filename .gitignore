@@ -26,6 +26,7 @@ runs/
 *.pt
 *.onnx
 *.cache
+*.traineddata          # OCR-B model (büyük; setup_model.py ile indirilir)
 
 # ---- IDE / OS ----
 .vscode/
@@ -35,3 +36,10 @@ Thumbs.db
 
 # ---- Test artifacts ----
 .pytest_cache/
+
+# ---- Generated evaluation/calibration outputs ----
+# ground_truth.json elle hazırlandı, VERSİYONLANIR; gerisi türetilen çıktı.
+GroundTruth/error_review/
+GroundTruth/accuracy_report.csv
+GroundTruth/calibration_data.csv
+GroundTruth/eval_log.txt
