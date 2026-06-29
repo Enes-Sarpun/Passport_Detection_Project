@@ -145,7 +145,7 @@ python main_tess.py setup
 ## 🧪 Kullanım
 
 ```bash
-# Tek bir görüntüyü işle (Tesseract + OCR-B)
+# Tek bir görüntüyü işle 
 python main_tess.py image "Images/MRZ_Data/images/2dfa28dd-TUR-AO-02001_265357.jpg"
 
 # Çıktıyı belirli bir klasöre yaz
