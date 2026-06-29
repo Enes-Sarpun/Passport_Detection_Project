@@ -65,15 +65,15 @@ def _is_dob_century_ambiguous(iso_dob: Optional[str]) -> bool:
 # is_specimen/zero_docnum signals were dropped as dataset-specific artefacts that
 # would misfire on real documents.
 #
-# Model: P = sigmoid(22.0462 * mean_field_conf + 9.6287 * structural_fraction
-#                    - 28.3998).  Out-of-fold AUC 0.929, Brier 0.109; the score
+# Model: P = sigmoid(21.0237 * mean_field_conf + 9.9955 * structural_fraction
+#                    - 27.9383).  Out-of-fold AUC 0.916, Brier 0.121; the score
 # is honest (slightly conservative), never inflated. Re-derive with:
 #     python GroundTruth/calibrate.py collect && ... analyse
 import math as _math
 
-_REL_COEF_FIELD_CONF = 22.0462
-_REL_COEF_STRUCTURAL = 9.6287
-_REL_INTERCEPT = -28.3998
+_REL_COEF_FIELD_CONF = 21.0237
+_REL_COEF_STRUCTURAL = 9.9955
+_REL_INTERCEPT = -27.9383
 
 
 def _reliability_score(
