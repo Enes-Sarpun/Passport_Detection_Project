@@ -56,7 +56,7 @@ def _is_dob_century_ambiguous(iso_dob: Optional[str]) -> bool:
 # Reliability score (J4)
 #
 # Weights are NOT hand-picked. They were fitted by logistic regression against
-# 170 hand-verified ground-truth images (GroundTruth/calibrate.py), predicting
+# 168 hand-verified ground-truth images (GroundTruth/calibrate.py), predicting
 # P(all parsed fields correct) from the read-quality signals. Only signals that
 # *causally* reflect read quality were kept — mean_field_conf (per-field OCR
 # confidence) and structural_fraction (internal consistency). Check-digit
@@ -65,15 +65,15 @@ def _is_dob_century_ambiguous(iso_dob: Optional[str]) -> bool:
 # is_specimen/zero_docnum signals were dropped as dataset-specific artefacts that
 # would misfire on real documents.
 #
-# Model: P = sigmoid(15.4946 * mean_field_conf + 8.6939 * structural_fraction
-#                    - 21.9842).  Out-of-fold AUC 0.853, Brier 0.137; the score
+# Model: P = sigmoid(22.0462 * mean_field_conf + 9.6287 * structural_fraction
+#                    - 28.3998).  Out-of-fold AUC 0.929, Brier 0.109; the score
 # is honest (slightly conservative), never inflated. Re-derive with:
 #     python GroundTruth/calibrate.py collect && ... analyse
 import math as _math
 
-_REL_COEF_FIELD_CONF = 15.4946
-_REL_COEF_STRUCTURAL = 8.6939
-_REL_INTERCEPT = -21.9842
+_REL_COEF_FIELD_CONF = 22.0462
+_REL_COEF_STRUCTURAL = 9.6287
+_REL_INTERCEPT = -28.3998
 
 
 def _reliability_score(
