@@ -42,12 +42,6 @@ def _tesseract_preprocess(image: np.ndarray, box: tuple, n_lines: int) -> list[n
 
 
 def _infer_format(result: TesseractResult) -> tuple[str, int, int]:
-    """Infer MRZ format from line *length*, not line *count*.
-
-    Tesseract often emits a spurious extra line (border/stamp), so the raw line
-    count is unreliable for TD1-vs-TD3 detection. We look at the longest real
-    (rstripped) lines instead: TD3 lines run ~44 chars, TD2 ~36, TD1 ~30.
-    """
     lengths = sorted(
         (len(_normalize(ln.text).rstrip("<")) for ln in result.lines),
         reverse=True,
@@ -69,12 +63,6 @@ def _infer_format(result: TesseractResult) -> tuple[str, int, int]:
 
 
 def _mrz_likeness(text: str, line_len: int) -> float:
-    """Score how MRZ-like a raw OCR line is, in [0, 1].
-
-    Real TD3 lines are long (~44), densely filled with MRZ characters, and made
-    only of [A-Z0-9<]. Spurious lines (a stray 'S<<<<<', a stamp fragment) are
-    short and almost entirely filler, so they score near zero.
-    """
     norm = _normalize(text)
     stripped = norm.rstrip("<")
     if not stripped:
@@ -94,18 +82,6 @@ def _mrz_likeness(text: str, line_len: int) -> float:
 
 
 def _l1_structure_score(text: str) -> float:
-    """How well a line matches the ICAO TD3 line-1 (name line) signature, 0-1.
-
-    Used only as a *tie-breaker* between candidate name lines when the check-digit
-    test cannot distinguish them (line 1 carries no check digit). A real name line
-    has a valid country code at positions 2-4, a '<<' surname/given separator, and
-    almost no digits. A spurious line read from the passport's printed header
-    (e.g. 'SUNITEDSTATESDEPARTMENTOFSTATE') fails these and scores low.
-
-    Never the sole selection criterion — the check-digit count always wins first,
-    so legitimate-but-unusual lines (e.g. Germany's single-letter 'D<<' code) are
-    not discarded by this heuristic.
-    """
     norm = _normalize(text)
     if len(norm) < 5:
         return 0.0
@@ -126,17 +102,6 @@ def _l1_structure_score(text: str) -> float:
 def _select_mrz_lines(
     candidates: list[str], line_len: int
 ) -> tuple[list[str], bool]:
-    """Pick the best 2-line MRZ from N raw OCR lines (hybrid selection).
-
-    1. Pre-filter: drop near-empty lines (likeness ~0).
-    2. Among the survivors, try every ordered pair and keep the one passing the
-       most check digits — check digits only validate when L2 sits in the right
-       position, so this resolves both *which* lines and *which order*.
-    3. Fallback: if no pair passes any check digit, return the two highest
-       likeness lines and flag for manual review.
-
-    Returns (two_aligned_lines, needs_manual_review).
-    """
     scored = sorted(
         ((_mrz_likeness(c, line_len), c) for c in candidates if c),
         key=lambda x: x[0],
@@ -197,13 +162,7 @@ def _process_frame(
     conf_threshold: float = 0.5,
     return_signals: bool = False,
 ):
-    """Run the Tesseract MRZ pipeline on one frame.
 
-    Returns (output_dict, detection). When ``return_signals`` is True, returns a
-    third element: a dict of the raw signals fed into the reliability score
-    (detection_confidence, ocr_confidence). This exists for weight calibration —
-    the JSON output stays slim; only callers that ask get the extra signals.
-    """
     def _ret(out, det, signals=None):
         return (out, det, signals) if return_signals else (out, det)
 

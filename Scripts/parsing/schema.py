@@ -53,22 +53,6 @@ def _is_dob_century_ambiguous(iso_dob: Optional[str]) -> bool:
         return False
 
 
-# Reliability score (J4)
-#
-# Weights are NOT hand-picked. They were fitted by logistic regression against
-# 168 hand-verified ground-truth images (GroundTruth/calibrate.py), predicting
-# P(all parsed fields correct) from the read-quality signals. Only signals that
-# *causally* reflect read quality were kept — mean_field_conf (per-field OCR
-# confidence) and structural_fraction (internal consistency). Check-digit
-# fraction and detection confidence were dropped (near-zero/negative correlation
-# here: check digits pass even when the name line is misread), and the
-# is_specimen/zero_docnum signals were dropped as dataset-specific artefacts that
-# would misfire on real documents.
-#
-# Model: P = sigmoid(21.0237 * mean_field_conf + 9.9955 * structural_fraction
-#                    - 27.9383).  Out-of-fold AUC 0.916, Brier 0.121; the score
-# is honest (slightly conservative), never inflated. Re-derive with:
-#     python GroundTruth/calibrate.py collect && ... analyse
 import math as _math
 
 _REL_COEF_FIELD_CONF = 21.0237
@@ -85,13 +69,6 @@ def _reliability_score(
     zero_docnum: bool,
     is_expired: bool,
 ) -> float:
-    """Calibrated P(parse is correct), from a logistic model fit to ground truth.
-
-    Only ``mean_ocr_conf`` (mean per-field OCR confidence) and
-    ``structural_fraction`` enter the model; the other arguments are kept for a
-    stable call signature but no longer affect the score, because the data showed
-    they do not causally predict correctness.
-    """
     z = (
         _REL_COEF_FIELD_CONF * float(mean_ocr_conf)
         + _REL_COEF_STRUCTURAL * float(structural_fraction)
@@ -249,7 +226,7 @@ def build_output(
         if fc < _FIELD_CONF_THRESHOLD and fname != "name":
             warnings.append(f"{fname}_low_confidence")
 
-    # ── validation summary (detailed per-check list intentionally omitted) ──
+    # validation summary
     all_checks = {
         "document_number_checkdigit": checks.get("document_number_valid"),
         "date_of_birth_checkdigit":   checks.get("date_of_birth_valid"),

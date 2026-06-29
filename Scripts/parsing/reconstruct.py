@@ -1,10 +1,3 @@
-"""MRZ line alignment and scoring helpers.
-
-Despite living under Scripts/OCR (the original multi-engine package), this module
-is now a pure utility set shared by the Tesseract pipeline: line normalisation,
-sliding-window alignment, format detection, and check-digit-based validation
-scoring. It has no OCR-engine dependency.
-"""
 from __future__ import annotations
 
 # Canonical line lengths per format.
@@ -101,11 +94,6 @@ def detect_format(lines: list[str]) -> tuple[str, int]:
 
 
 def _validation_score(lines: list[str]) -> tuple[int, float, float]:
-    """Return (check_digit_passes, composite_bonus, char_density) for a line pair.
-
-    Used by the Tesseract pipeline to rank candidate line selections: pairs that
-    pass more check digits (and have a valid composite) score higher.
-    """
     if not lines:
         return (0, 0.0, 0.0)
     total_chars = sum(len(l) for l in lines)
