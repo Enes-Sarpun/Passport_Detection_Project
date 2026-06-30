@@ -1,0 +1,594 @@
+/* ================================================================
+   Hero Landing — Passport OCR-YOLO
+   Dark dramatic welcome: siyah canvas, #22C55E yeşil accent,
+   dev büyük başlık, crossfade video/katman arka plan, reveal animasyonları.
+   ================================================================ */
+
+:root {
+  --hero-green: #22c55e;
+  --hero-pink: #f598f2;
+  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --font-hero: 'Figtree', 'Inter', sans-serif;
+}
+
+/* ---- Shell ---- */
+.hero {
+  position: relative;
+  min-height: 100vh;
+  height: 100vh;
+  background: #000;
+  color: #fff;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-hero);
+  -webkit-font-smoothing: antialiased;
+  /* Scroll snap — stop olmadan daha akıcı */
+  scroll-snap-align: start;
+}
+
+/* ================================================================
+   VIDEO / KATMAN ARKA PLAN
+   ================================================================ */
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.hero-bg__video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 1200ms ease-in-out;
+}
+.hero-bg__video.is-active { opacity: 1; }
+
+/* CSS-only fallback katmanları (video yüklenemezse) */
+.hero-bg__layer {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 1200ms ease-in-out;
+}
+.hero-bg__layer.is-active { opacity: 1; }
+
+.hero-bg__layer--0 {
+  background:
+    radial-gradient(900px 500px at 70% 30%, rgba(34,197,94,0.15), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(34,197,94,0.04) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, rgba(34,197,94,0.04) 0 1px, transparent 1px 40px),
+    #030803;
+}
+.hero-bg__layer--1 {
+  background:
+    radial-gradient(ellipse 800px 600px at 20% 60%, rgba(34,197,94,0.12), transparent 55%),
+    radial-gradient(ellipse 500px 400px at 80% 20%, rgba(34,197,94,0.08), transparent 50%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 28px),
+    #040a04;
+}
+.hero-bg__layer--2 {
+  background:
+    radial-gradient(ellipse 1000px 700px at 50% 50%, rgba(34,197,94,0.1), transparent 60%),
+    conic-gradient(from 0deg at 50% 50%, rgba(34,197,94,0.05), transparent 60deg, rgba(34,197,94,0.05) 120deg, transparent 180deg),
+    #030803;
+}
+
+/* Overlay — video üzerinde metin okunabilirliği için */
+.hero-bg__overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 1;
+}
+
+/* Base katman — her zaman görünür (video yüklenmeden önce de) */
+.hero-bg__base {
+  position: absolute;
+  inset: 0;
+  background: #030803;
+  z-index: -1;
+}
+
+/* Floating MRZ text watermark */
+.hero-bg__mrz {
+  position: absolute;
+  bottom: 0;
+  left: 0; right: 0;
+  z-index: 2;
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  color: rgba(34,197,94,0.12);
+  padding: 12px 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: clip;
+  user-select: none;
+  pointer-events: none;
+  animation: mrzScroll 30s linear infinite;
+}
+@keyframes mrzScroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-33.33%); }
+}
+
+/* ================================================================
+   NAVBAR
+   ================================================================ */
+.hero-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 36px max(15px, calc((100% - 1340px) / 2 + 15px));
+  box-sizing: border-box;
+}
+
+.hero-nav__left {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.hero-nav__link {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-decoration: none;
+  color: rgba(255,255,255,0.75);
+  position: relative;
+  transition: color 0.2s;
+}
+.hero-nav__link:hover { color: #fff; }
+
+.hero-nav__link::after {
+  content: '';
+  position: absolute;
+  bottom: -3px; left: 0; right: 0;
+  height: 1px;
+  background: #fff;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s var(--ease-spring);
+}
+.hero-nav__link:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+.hero-nav__idx {
+  font-size: 8px;
+  line-height: 12px;
+  letter-spacing: -0.08px;
+  font-weight: 500;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+.hero-nav__label {
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: -0.12px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.hero-nav__right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.hero-nav__brand {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.12px;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+.hero-clock {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  opacity: 0.5;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Mobile hamburger */
+.hero-nav__toggle {
+  display: none;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.3);
+  color: #fff;
+  font-family: var(--font-hero);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.hero-nav__toggle:hover { border-color: rgba(255,255,255,0.7); }
+
+/* Mobile panel */
+.hero-nav__panel {
+  display: grid;
+  grid-rows: 0fr;
+  grid-template-rows: 0fr;
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background: rgba(0,0,0,0.95);
+  backdrop-filter: blur(12px);
+  transition: grid-template-rows 420ms var(--ease-spring);
+  overflow: hidden;
+}
+.hero-nav__panel.is-open {
+  grid-template-rows: 1fr;
+}
+.hero-nav__panel-inner {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0 18px;
+}
+.hero-nav__panel.is-open .hero-nav__panel-inner {
+  padding: 24px 18px 32px;
+}
+.hero-nav__panel-link {
+  display: block;
+  font-size: 28px;
+  line-height: 32px;
+  letter-spacing: -0.84px;
+  font-weight: 500;
+  color: #fff;
+  text-decoration: none;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  transition: color 0.2s;
+}
+.hero-nav__panel-link:hover { color: var(--hero-green); }
+
+/* ================================================================
+   HERO MAIN CONTENT
+   ================================================================ */
+.hero-main {
+  position: relative;
+  z-index: 2;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: stretch;
+  gap: 48px;
+  width: 100%;
+  max-width: 1340px;
+  margin: 0 auto;
+  /* padding-bottom: içeriği blur fade'in üzerine taşır */
+  padding: 160px 15px 110px;
+  box-sizing: border-box;
+}
+
+/* ---- UPPER: switcher + availability ---- */
+.hero-upper {
+  width: 100%;
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+}
+
+.hero-switch {
+  flex: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hero-switch__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: #fff;
+  font-family: var(--font-hero);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.12px;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 4px 0;
+  opacity: 0.55;
+  transition: opacity 0.2s, transform 0.25s var(--ease-spring);
+  text-align: left;
+}
+.hero-switch__btn:hover { opacity: 0.75; transform: translateX(4px); }
+.hero-switch__btn.is-active { opacity: 1; transform: translateX(4px); }
+
+.hero-avail {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.12px;
+}
+
+.hero-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hero-green);
+  box-shadow: 0 0 8px 2px rgba(34,197,94,0.6);
+  animation: dotPulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.hero[data-accent="white"] .hero-dot {
+  background: #fff;
+  box-shadow: 0 0 8px 2px rgba(255,255,255,0.5);
+}
+
+@keyframes dotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(1.45); }
+}
+
+/* ---- LOWER: name + CTA ---- */
+.hero-lower {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding-bottom: 0; /* artık hero-main padding-bottom yönetiyor */
+}
+
+.hero-name {
+  flex: 2;
+  /* 2 satırlık 'Passport Detection.' için daha küçük font */
+  font-size: clamp(44px, 6.5vw, 96px);
+  line-height: 92%;
+  letter-spacing: -3px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #fff;
+  opacity: 0;
+  min-width: 0;
+}
+.hero-name.reveal-up {
+  animation: revealUp 0.9s var(--ease-spring) forwards;
+}
+.hero-name__dot {
+  color: var(--hero-green);
+  transition: color 0.6s ease;
+}
+.hero[data-accent="white"] .hero-name__dot { color: #fff; }
+
+.hero-pitch {
+  flex: 1;
+  padding-left: 50px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  opacity: 0;
+}
+.hero-pitch.reveal-right {
+  animation: revealRight 0.9s var(--ease-spring) forwards;
+}
+.hero-pitch__text {
+  font-size: 15px;
+  line-height: 24px;
+  letter-spacing: -0.16px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.75);
+}
+
+/* Trust stats grid */
+.hero-trust {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 24px;
+}
+.hero-trust__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.hero-trust__v {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+  color: var(--hero-green);
+  font-family: 'JetBrains Mono', monospace;
+}
+.hero-trust__k {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.45);
+  font-weight: 500;
+}
+
+/* CTA button */
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.6);
+  color: #fff;
+  font-family: var(--font-hero);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.14px;
+  padding: 14px 32px;
+  cursor: pointer;
+  transition: color 0.35s ease, border-color 0.35s ease;
+  border-radius: 3px;
+  align-self: flex-start;
+}
+.hero-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--hero-green);
+  transform: translateY(101%);
+  transition: transform 0.4s var(--ease-spring);
+  z-index: -1;
+}
+.hero-cta:hover {
+  color: #000;
+  border-color: var(--hero-green);
+}
+.hero-cta:hover::before { transform: translateY(0); }
+
+/* ================================================================
+   ANIMASYONLAR
+   ================================================================ */
+@keyframes revealUp {
+  from { opacity: 0; transform: translateY(80px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes revealRight {
+  from { opacity: 0; transform: translateX(100px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ================================================================
+   TABLET (810px – 1199px)
+   ================================================================ */
+@media (min-width: 810px) and (max-width: 1199.98px) {
+  .hero-nav { padding: 30px 18px; }
+  .hero-nav__left { gap: 16px; }
+  .hero-main { gap: 36px; padding-top: 140px; padding-inline: 18px; }
+  .hero-name { font-size: clamp(80px, 10vw, 130px); line-height: 100%; letter-spacing: -5px; }
+  .hero-lower { gap: 0; padding-bottom: 44px; }
+  .hero-pitch { padding-left: 24px; gap: 20px; }
+}
+
+/* ================================================================
+   MOBILE (< 810px)
+   ================================================================ */
+@media (max-width: 809.98px) {
+  .hero-nav { padding: 24px 18px; }
+  .hero-nav__left { display: none; }
+  .hero-nav__toggle { display: block; }
+
+  .hero-main {
+    justify-content: flex-end;
+    align-items: stretch;
+    gap: 40px;
+    padding-top: 130px;
+    padding-inline: 18px;
+  }
+
+  .hero-upper {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 20px;
+  }
+  .hero-avail { justify-content: flex-start; }
+
+  .hero-lower {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .hero-main { padding-bottom: 80px; }
+
+  .hero-name {
+    font-size: clamp(64px, 18vw, 90px);
+    line-height: 95%;
+    letter-spacing: -3px;
+  }
+  .hero-pitch {
+    padding-left: 0;
+    max-width: 420px;
+  }
+  .hero-trust {
+    grid-template-columns: 1fr 1fr;
+    gap: 10px 16px;
+  }
+  .hero-trust__v { font-size: 18px; }
+}
+
+/* ================================================================
+   SCROLL HİNT — hero'nun alt ortasında aşağı kaydır göstergesi
+   ================================================================ */
+.hero-scroll-hint {
+  position: absolute;
+  bottom: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  opacity: 0.45;
+  transition: opacity 0.2s;
+}
+.hero-scroll-hint:hover { opacity: 0.85; }
+
+.hero-scroll-hint__line {
+  display: block;
+  width: 1px;
+  height: 48px;
+  background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.8));
+  animation: scrollLine 1.8s ease-in-out infinite;
+}
+@keyframes scrollLine {
+  0%   { transform: scaleY(0); transform-origin: top; opacity: 0; }
+  50%  { transform: scaleY(1); transform-origin: top; opacity: 1; }
+  100% { transform: scaleY(1); transform-origin: bottom; opacity: 0; }
+}
+
+.hero-scroll-hint__text {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: rgba(255,255,255,0.6);
+}
+
+/* ================================================================
+   HERO → KONSOL GEÇİŞ BLUR FADE — çok az, sadece kırılma noktası
+   ================================================================ */
+.hero-bottom-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 72px; /* çok daha kısa, sadece geçiş hattı */
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(248, 248, 248, 0.88) 100%
+  );
+  /* backdrop-filter kaldırıldı — scroll sırasında GPU yükleniyor */
+  z-index: 5;
+  pointer-events: none;
+}
+
+/* ================================================================
+   REDUCED MOTION
+   ================================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .hero-name, .hero-pitch { animation: none !important; opacity: 1; }
+  .hero-dot { animation: none; }
+  .hero-bg__mrz { animation: none; }
+  .hero-bg__video, .hero-bg__layer { transition: none; }
+  .hero-scroll-hint__line { animation: none; }
+}

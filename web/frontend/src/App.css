@@ -1,0 +1,258 @@
+/* Trust Console layout & components — passport-detection-DESIGN.md §4–§8.
+   Paper-white data-dense canvas, one dark scan slab, blue for actions only,
+   reliability color only in badges/bars, literal 0.75 threshold lines. */
+
+/* ---- Single-page root — scroll snap container ---- */
+.app-root {
+  height: 100vh;
+  overflow-y: scroll;
+  scroll-snap-type: y mandatory;
+  scroll-behavior: smooth;
+  /* GPU optimizasyonu */
+  will-change: scroll-position;
+  overscroll-behavior: none;
+  /* Firefox scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34,197,94,0.3) transparent;
+}
+
+/* ---- Konsol bölümü (scroll ile ulaşılan) ---- */
+.console-section {
+  background: var(--bg);
+  min-height: 100vh;
+  /* Scroll snap — stop kaldırıldı, daha akıcı */
+  scroll-snap-align: start;
+  border-top: 1px solid rgba(34, 197, 94, 0.12);
+}
+
+.console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  border-bottom: 1px solid var(--border);
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+  gap: 16px;
+}
+
+/* Brand + label arasına boşluk */
+.console-header__brand {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;  /* — Passport OCR-YOLO ile Trust Console arası */
+}
+
+.console-body {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding-top: 32px;
+  padding-bottom: 80px;
+}
+
+/* ---- Shell & layout (§5) — eski .console sınıfı yerine artık .console-body ---- */
+.console {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 64px;
+  border-bottom: 1px solid var(--border);
+}
+.topbar__brand { display: flex; align-items: baseline; gap: 10px; }
+.topbar__mark {
+  width: 14px; height: 14px; border-radius: 3px;
+  background: var(--accent); align-self: center;
+}
+.topbar__name { font-weight: 600; font-size: 16px; color: var(--ink); }
+.topbar__sub { font-size: 11px; }
+
+.main {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 32px 0 80px;
+}
+
+/* ---- Upload dropzone (§4) ---- */
+.dropzone {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 80px 24px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.dropzone:hover { border-color: var(--ink-dim); }
+.dropzone--active { border: 1px solid var(--accent); background: var(--bg-alt); }
+.dropzone__icon { color: var(--accent); margin-bottom: 8px; }
+.dropzone__title { font-size: 16px; color: var(--ink); }
+.dropzone__formats { font-size: 12px; color: var(--ink-muted); }
+
+/* ---- Scan console: dark instrument (§4 + §6) ---- */
+.scan-console {
+  background: var(--console-bg);
+  color: var(--console-ink);
+  border: 1px solid var(--console-border);
+  border-radius: 6px;
+  padding: 20px 22px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.6;
+  min-height: 180px;
+  max-height: 240px;
+  overflow: auto;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35); /* the one lifted surface */
+}
+.scan-console__line { display: flex; align-items: center; gap: 8px; }
+.scan-console__prompt { color: var(--console-cursor); }
+.scan-console__caret {
+  display: inline-block; width: 8px; height: 15px;
+  background: var(--console-cursor);
+  animation: blink 1s step-start infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* collapsed status strip after scan */
+.scan-strip {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--console-bg); color: var(--console-dim);
+  border: 1px solid var(--console-border); border-radius: 6px;
+  padding: 10px 16px; font-size: 12px;
+}
+.scan-strip .mono { color: var(--console-ink); }
+.scan-strip__dot { width: 7px; height: 7px; border-radius: 50%; background: var(--score-high); }
+.scan-strip__sep { color: var(--console-dim); }
+.scan-strip .label { color: var(--console-dim); }
+
+/* ---- Detected MRZ preview ---- */
+.preview {
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); padding: 12px; overflow: hidden;
+}
+.preview img { display: block; max-width: 100%; border-radius: 4px; }
+
+/* ---- Reliability overview chart (§4) ---- */
+.chart {
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); padding: 20px 22px;
+}
+.chart__head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 16px; }
+.chart__head h3 { font-size: 14px; }
+.chart__threshold-note { font-size: 12px; color: var(--score-low); }
+.chart__divider {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--ink-muted); margin: 14px 0 8px; padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.chart__divider--below { color: var(--score-low); }
+
+.chart-row { display: grid; grid-template-columns: 130px 1fr 48px; align-items: center; gap: 12px; padding: 5px 0; }
+.chart-row__label { font-size: 11px; }
+.chart-row__track { position: relative; height: 8px; background: var(--bg-alt); border-radius: 2px; }
+.chart-row__fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; }
+.chart-row__threshold {
+  position: absolute; top: -3px; bottom: -3px; width: 0;
+  border-left: 1px dashed var(--threshold-line);
+}
+.chart-row__value { text-align: right; font-size: 13px; color: var(--ink); }
+
+/* ---- Field result table (§4) ---- */
+.ftable { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); overflow: hidden; }
+.ftable__head { padding: 16px 20px 0; }
+.ftable__head h3 { font-size: 14px; }
+.ftable__grid--header {
+  display: grid; grid-template-columns: 130px 1.6fr 56px 1fr 110px;
+  gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--border); margin-top: 12px;
+}
+.ftable__row {
+  display: grid; grid-template-columns: 130px 1.6fr 56px 1fr 110px;
+  gap: 14px; align-items: center;
+  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface); /* row stays white regardless of status (§4) */
+}
+.ftable__row:last-child { border-bottom: none; }
+.ftable__label { font-size: 11px; }
+.ftable__num { text-align: right; font-size: 13px; color: var(--ink); }
+.ftable__value { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ftable__bar { width: 100%; }
+
+.field-extra { font-size: 11px; color: var(--ink-muted); }
+.field-hint { font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
+.field-hint--req { color: var(--mandatory-ring); }
+.field-hint--opt { color: var(--ink-muted); }
+
+/* inline correction inputs — ring weight conveys mandatory vs optional (§4/§7) */
+.field-input {
+  width: 100%; padding: 7px 9px; border-radius: 4px;
+  border: 1px solid var(--border); background: var(--surface);
+  color: var(--ink); font-size: 13px; outline: none;
+}
+.field-input--optional:focus { border-color: var(--optional-ring); box-shadow: 0 0 0 1px var(--optional-ring); }
+.field-input--mandatory {
+  border: 2px solid var(--mandatory-ring);
+  box-shadow: 0 0 0 1px rgba(210, 59, 59, 0.15);
+}
+
+/* mini score bar with threshold tick */
+.scorebar { position: relative; height: 4px; background: var(--bg-alt); border-radius: 2px; }
+.scorebar__fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 2px; }
+.scorebar__threshold { position: absolute; top: -2px; bottom: -2px; width: 0; border-left: 1px dashed var(--threshold-line); }
+
+/* status badges — text only, except Not Found fill (§4) */
+.badge { font-size: 11px; font-weight: 600; white-space: nowrap; }
+.badge--high { color: var(--score-high); }
+.badge--mid { color: var(--score-mid); }
+.badge--low { color: var(--score-mid); }
+.badge--notfound {
+  color: var(--not-found-ink); background: var(--not-found-bg);
+  border: 1px solid var(--not-found-border); border-radius: 3px;
+  padding: 2px 7px;
+}
+
+/* ---- Save gate (§4) ---- */
+.savegate {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.savegate__helper { font-size: 13px; color: var(--ink-muted); }
+.savegate__count { color: var(--mandatory-ring); font-weight: 500; }
+.savegate__ok { color: var(--score-high); font-weight: 600; }
+
+/* ---- Buttons (§4) ---- */
+.btn { border-radius: 4px; font-size: 13px; font-weight: 600; padding: 9px 20px; border: 1px solid transparent; transition: background .15s; }
+.btn--primary { background: var(--accent); color: #fff; }
+.btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn--primary:disabled { background: var(--ink-dim); color: var(--bg-alt); cursor: not-allowed; }
+.btn--secondary { background: transparent; border-color: var(--border); color: var(--ink); padding: 7px 14px; }
+.btn--secondary:hover { border-color: var(--ink-dim); }
+
+/* ---- Error box ---- */
+.errorbox {
+  background: var(--not-found-bg); border: 1px solid var(--not-found-border);
+  color: var(--not-found-ink); border-radius: 6px; padding: 16px 20px; font-size: 14px;
+}
+
+/* ---- Responsive: rows → stacked cards below 768px (§8) ---- */
+@media (max-width: 768px) {
+  .console { padding: 0 16px; }
+  .ftable__grid--header { display: none; }
+  .ftable__row {
+    grid-template-columns: 1fr; gap: 8px; padding: 16px 16px;
+  }
+  .ftable__num { text-align: left; }
+  .chart-row { grid-template-columns: 100px 1fr 40px; }
+  .savegate { position: sticky; bottom: 0; background: var(--bg); padding: 16px 0; flex-direction: column; align-items: stretch; }
+  .savegate .btn--primary { width: 100%; }
+}

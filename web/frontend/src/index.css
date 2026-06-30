@@ -1,0 +1,103 @@
+/* Passport Detection — Trust Console
+   Theme tokens map 1:1 to passport-detection-DESIGN.md §2.
+   Paper-white operator console with ONE dark scan slab. No dark-mode-everywhere. */
+
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Surfaces & ink */
+  --bg: #fafafa;
+  --bg-alt: #f1f2f4;
+  --surface: #ffffff;
+  --ink: #1a1d21;
+  --ink-muted: #6b7280;
+  --ink-dim: #9ca3af;
+  --border: #e2e4e8;
+
+  /* Dark scan slab (Ollama/OpenCode terminal) */
+  --console-bg: #0d1117;
+  --console-ink: #e6e6e6;
+  --console-dim: #7d8590;
+  --console-border: #21262d;
+  --console-cursor: #58a6ff;
+
+  /* Action accent (BMW trust blue) — actions only */
+  --accent: #1c69d4;
+  --accent-hover: #0653b6;
+
+  /* Reliability semantic scale — scores only, never decorative */
+  --score-high: #1f9d55;   /* reliability >= 0.85 */
+  --score-mid: #d99a1b;    /* 0.75 <= reliability < 0.85 */
+  --score-low: #d23b3b;    /* reliability < 0.75 — threshold breach */
+  --threshold-line: #d23b3b;
+
+  --not-found-bg: #fdecec;
+  --not-found-border: #f2b8b8;
+  --not-found-ink: #8a1f1f;
+
+  --mandatory-ring: #d23b3b;
+  --optional-ring: #1c69d4;
+
+  /* Type stacks */
+  --sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  --mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
+
+  color-scheme: light;
+  font-family: var(--sans);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  /* app-root scroll snap container'ı yönetir */
+  overflow: hidden;
+  height: 100vh;
+}
+
+#root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Tabular numerals everywhere a number lives (§3 — scores must align) */
+.mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Uppercase tracked labels (§3) */
+.label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  color: var(--ink-muted);
+  font-weight: 600;
+}
+
+h1, h2, h3 {
+  color: var(--ink);
+  font-weight: 600;
+  margin: 0;
+}
+
+p { margin: 0; }
+
+button {
+  font-family: var(--sans);
+  cursor: pointer;
+}
+
+input {
+  font-family: var(--sans);
+}
