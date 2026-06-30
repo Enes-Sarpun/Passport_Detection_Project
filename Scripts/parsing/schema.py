@@ -11,11 +11,11 @@ SCHEMA_VERSION = "5"
 # Internal thresholds
 _LOW_OCR_CONF = 0.60
 _LOW_DETECT_CONF = 0.50
-# Rescan / manual-review threshold, chosen from the calibration data: at 0.70 the
-# score flags 21/23 truly-incorrect images (91% recall) while raising the fewest
-# false alarms — raising it to 0.75 caught no extra errors but sent ~10 more
-# correct images to needless manual review (GroundTruth/calibrate.py).
-_RESCAN_THRESHOLD = 0.70
+# Rescan / manual-review threshold, chosen from the calibration data: at 0.75 the
+# score flags 22/22 truly-incorrect images (100% recall) for +2 false alarms over
+# 0.70 (which let one borderline error through at exactly 0.70). 100% recall is
+# worth the extra two manual reviews (GroundTruth/calibrate.py).
+_RESCAN_THRESHOLD = 0.75
 _FIELD_CONF_THRESHOLD = 0.85
 _DOB_AGE_MIN = 5
 _DOB_AGE_MAX = 100
@@ -31,14 +31,54 @@ def _sex_description(sex: str) -> str:
     return _SEX_MAP.get(sex.upper() if sex else "", "Unspecified")
 
 
-def _field_confidence(ocr_c: float, checkdigit_valid: Optional[bool], repaired: bool) -> float:
-    if checkdigit_valid is None:
-        return round(float(ocr_c), 2)
-    if checkdigit_valid and not repaired:
-        return round(min(0.90 + 0.10 * float(ocr_c), 1.0), 2)
-    if checkdigit_valid and repaired:
-        return round(min(0.80 + 0.10 * float(ocr_c), 0.90), 2)
-    return round(min(float(ocr_c), 0.40), 2)
+# Per-field base reliability: the empirical accuracy of each MRZ field measured
+# on the 168-image ground-truth set (GroundTruth/accuracy_report.csv). These are
+# NOT hand-picked — they are "given this is field X, how often is the pipeline's
+# read actually correct". Name fields are hardest (stamps/guilloche corrupt the
+# name line); check-digit-backed fields are nearly perfect. Re-derive from the
+# accuracy report's per-field failure counts.
+_FIELD_BASE_RELIABILITY = {
+    "document_number": 0.982,
+    "personal_number": 0.982,   # same structural class as document number
+    "nationality": 0.994,
+    "name": 0.917,              # mean of surname (0.923) and given_names (0.911)
+    "date_of_birth": 0.994,
+    "date_of_expiry": 0.988,
+    "sex": 0.994,
+}
+
+
+def _field_reliability(
+    field_key: str,
+    ocr_c: float,
+    checkdigit_valid: Optional[bool],
+    repaired: bool,
+) -> float:
+    """Per-field reliability ≈ P(this field's value is correct), grounded in data.
+
+    Starts from the field's empirical accuracy on ground truth (_FIELD_BASE_…)
+    and modulates it by this document's live signals:
+      - a FAILED check digit is strong evidence the read is wrong → heavy penalty;
+      - an auto-repaired value is less certain than a clean pass → mild penalty;
+      - low OCR confidence drags the score down proportionally.
+    A passing check digit leaves the base intact (it is already the measured
+    accuracy of check-digit-passing reads). The result is clamped to [0, 1].
+    """
+    base = _FIELD_BASE_RELIABILITY.get(field_key, 0.95)
+
+    # Check-digit evidence (only for fields that have one).
+    if checkdigit_valid is False:
+        base *= 0.35           # check digit says the read is almost certainly wrong
+    elif checkdigit_valid is True and repaired:
+        base *= 0.90           # recovered via confusion repair — slightly less sure
+    elif checkdigit_valid is None and repaired:
+        base *= 0.90           # name/nationality repaired (no check digit to confirm)
+
+    # OCR confidence modulation: scale toward the base as confidence rises.
+    # At ocr_c=1.0 the base is untouched; lower confidence pulls it down.
+    conf_factor = 0.7 + 0.3 * float(ocr_c)   # maps ocr_c∈[0,1] → [0.7, 1.0]
+    score = base * conf_factor
+    return round(max(0.0, min(1.0, score)), 2)
 
 
 def _is_dob_century_ambiguous(iso_dob: Optional[str]) -> bool:
@@ -55,9 +95,14 @@ def _is_dob_century_ambiguous(iso_dob: Optional[str]) -> bool:
 
 import math as _math
 
-_REL_COEF_FIELD_CONF = 21.0237
-_REL_COEF_STRUCTURAL = 9.9955
-_REL_INTERCEPT = -27.9383
+# Overall reliability_score weights, fitted by logistic regression on 168 GT
+# images (GroundTruth/calibrate.py) predicting P(all fields correct) from
+# mean_field_reliability + structural_fraction. Out-of-fold AUC 0.915, Brier
+# 0.119. Re-derive after any change to _field_reliability:
+#     python GroundTruth/calibrate.py collect && ... analyse
+_REL_COEF_FIELD_CONF = 29.5137
+_REL_COEF_STRUCTURAL = 10.4693
+_REL_INTERCEPT = -35.9797
 
 
 def _reliability_score(
@@ -95,16 +140,21 @@ def build_output(
     det_c = float(detection_confidence)
 
     field_confs = {
-        "document_number": _field_confidence(
-            ocr_c, checks.get("document_number_valid"), "document_number" in repaired_set),
-        "date_of_birth": _field_confidence(
-            ocr_c, checks.get("date_of_birth_valid"), "date_of_birth" in repaired_set),
-        "date_of_expiry": _field_confidence(
-            ocr_c, checks.get("date_of_expiry_valid"), "date_of_expiry" in repaired_set),
-        "personal_number": _field_confidence(
-            ocr_c, checks.get("personal_number_valid"), "personal_number" in repaired_set),
-        "nationality": _field_confidence(ocr_c, None, "nationality" in repaired_set),
-        "name": _field_confidence(ocr_c, None, "name" in repaired_set),
+        "document_number": _field_reliability(
+            "document_number", ocr_c, checks.get("document_number_valid"),
+            "document_number" in repaired_set),
+        "date_of_birth": _field_reliability(
+            "date_of_birth", ocr_c, checks.get("date_of_birth_valid"),
+            "date_of_birth" in repaired_set),
+        "date_of_expiry": _field_reliability(
+            "date_of_expiry", ocr_c, checks.get("date_of_expiry_valid"),
+            "date_of_expiry" in repaired_set),
+        "personal_number": _field_reliability(
+            "personal_number", ocr_c, checks.get("personal_number_valid"),
+            "personal_number" in repaired_set),
+        "nationality": _field_reliability(
+            "nationality", ocr_c, None, "nationality" in repaired_set),
+        "name": _field_reliability("name", ocr_c, None, "name" in repaired_set),
     }
 
     checkdigit_keys = {
@@ -271,11 +321,11 @@ def build_output(
             },
             "number": {
                 "value": result.document_number,
-                "confidence": field_confs["document_number"],
+                "reliability": field_confs["document_number"],
             },
             "personal_number": {
                 "value": result.personal_number if result.personal_number else "00000000000",
-                "confidence": field_confs["personal_number"],
+                "reliability": field_confs["personal_number"],
             },
             "mrz_format": mrz_format,
         },
@@ -283,11 +333,11 @@ def build_output(
         "holder": {
             "surname": {
                 "value": result.surname,
-                "confidence": round(field_confs["name"], 2),
+                "reliability": round(field_confs["name"], 2),
             },
             "given_names": {
                 "value": result.given_names,
-                "confidence": round(field_confs["name"], 2),
+                "reliability": round(field_confs["name"], 2),
             },
             "given_names_list": (
                 result.name_dict.get("given_names_list", []) if result.name_dict else []
@@ -299,12 +349,12 @@ def build_output(
             "nationality": {
                 "code": result.nationality,
                 "name": nat["name"],
-                "confidence": round(field_confs["nationality"], 2),
+                "reliability": round(field_confs["nationality"], 2),
             },
             "sex": {
                 "code": sex_raw,
                 "description": sex_desc,
-                "confidence": round(field_confs["document_number"], 2),
+                "reliability": round(field_confs["document_number"], 2),
             },
         },
 
@@ -312,12 +362,12 @@ def build_output(
             "date_of_birth": {
                 "raw": result.birth_date_raw,
                 "iso": result.birth_date_iso or "",
-                "confidence": field_confs["date_of_birth"],
+                "reliability": field_confs["date_of_birth"],
             },
             "date_of_expiry": {
                 "raw": result.expiry_date_raw,
                 "iso": result.expiry_date_iso or "",
-                "confidence": field_confs["date_of_expiry"],
+                "reliability": field_confs["date_of_expiry"],
             },
             "is_expired": is_expired,
         },

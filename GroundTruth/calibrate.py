@@ -36,7 +36,7 @@ import cv2
 import numpy as np
 
 from Scripts.parsing.mrz_parse import parse_mrz, MRZResult, check_stop_words
-from Scripts.parsing.schema import _field_confidence
+from Scripts.parsing.schema import _field_reliability
 
 _GT_PATH = _ROOT / "GroundTruth" / "ground_truth.json"
 _IMG_DIR = _ROOT / "Images" / "MRZ_Data" / "Processed_data" / "images" / "test"
@@ -94,14 +94,14 @@ def _signals_from_result(result: MRZResult, det_conf: float, ocr_conf: float) ->
     passed_struct = sum(1 for k in _STRUCTURAL_KEYS if checks.get(k) is True)
     structural_fraction = passed_struct / len(_STRUCTURAL_KEYS)
 
-    # mean_field_conf as schema.py computes it
+    # mean_field_conf as schema.py computes it (now per-field reliability)
     fc = {
-        "document_number": _field_confidence(ocr_conf, checks.get("document_number_valid"), "document_number" in repaired),
-        "date_of_birth": _field_confidence(ocr_conf, checks.get("date_of_birth_valid"), "date_of_birth" in repaired),
-        "date_of_expiry": _field_confidence(ocr_conf, checks.get("date_of_expiry_valid"), "date_of_expiry" in repaired),
-        "personal_number": _field_confidence(ocr_conf, checks.get("personal_number_valid"), "personal_number" in repaired),
-        "nationality": _field_confidence(ocr_conf, None, "nationality" in repaired),
-        "name": _field_confidence(ocr_conf, None, "name" in repaired),
+        "document_number": _field_reliability("document_number", ocr_conf, checks.get("document_number_valid"), "document_number" in repaired),
+        "date_of_birth": _field_reliability("date_of_birth", ocr_conf, checks.get("date_of_birth_valid"), "date_of_birth" in repaired),
+        "date_of_expiry": _field_reliability("date_of_expiry", ocr_conf, checks.get("date_of_expiry_valid"), "date_of_expiry" in repaired),
+        "personal_number": _field_reliability("personal_number", ocr_conf, checks.get("personal_number_valid"), "personal_number" in repaired),
+        "nationality": _field_reliability("nationality", ocr_conf, None, "nationality" in repaired),
+        "name": _field_reliability("name", ocr_conf, None, "name" in repaired),
     }
     mean_field_conf = sum(fc.values()) / len(fc)
 

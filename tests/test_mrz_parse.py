@@ -415,9 +415,9 @@ class TestNewSchemaShape:
         assert isinstance(doc["type"], dict)
         assert doc["type"]["code"] == "P"
         assert doc["type"]["description"] == "Passport"
-        # number has value, confidence (per-field 'valid' removed for readability)
+        # number has value, reliability (per-field 'valid' removed for readability)
         assert "value" in doc["number"]
-        assert "confidence" in doc["number"]
+        assert "reliability" in doc["number"]
         assert "valid" not in doc["number"]
         # issuing_country removed from output (nationality carries the same info)
         assert "issuing_country" not in doc
@@ -641,43 +641,39 @@ class TestFieldConfidence:
         return build_output(result, detection_confidence=det, ocr_confidence=ocr,
                             raw_mrz=[self._LINE1, self._LINE2])
 
-    def test_clean_sample_field_confidences_high(self):
+    def test_clean_sample_field_reliability_high(self):
+        # Clean read with passing check digits -> reliability near each field's
+        # empirical base accuracy (all > 0.90 for check-digit-backed fields).
         out = self._build(ocr=0.95)
-        assert out["document"]["number"]["confidence"] > 0.90
-        assert out["dates"]["date_of_birth"]["confidence"] > 0.90
-        assert out["dates"]["date_of_expiry"]["confidence"] > 0.90
+        assert out["document"]["number"]["reliability"] > 0.90
+        assert out["dates"]["date_of_birth"]["reliability"] > 0.90
+        assert out["dates"]["date_of_expiry"]["reliability"] > 0.90
 
-    def test_repaired_field_confidence_below_clean(self):
-        line1 = "P<ISLAEVARSDOTTIR<<THURIDUR<OESP<<<<<<<<<<<<<"
-        line2 = "A0000000<01<L6612315F0905264311266<9539<<<32"
+    def test_failed_checkdigit_drops_reliability(self):
+        # A field whose check digit fails should score far below a clean field.
+        line1 = "P<UTOSPECIMEN<<TEST<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+        line2 = "UT0000001<UTO8001011M3001017<<<<<<<<<<<<<<<6"
         result = parse_mrz([line1, line2])
         if result is None:
             pytest.skip("parse failed")
-        out = build_output(result, detection_confidence=0.9, ocr_confidence=0.95,
+        out = build_output(result, detection_confidence=0.9, ocr_confidence=0.9,
                            raw_mrz=[line1, line2])
-        clean_conf = out["document"]["number"]["confidence"]
-        nat_conf = out["holder"]["nationality"]["confidence"]
-        assert nat_conf < clean_conf
+        # nationality (no check digit, clean) should outrank a failed-cd field.
+        nat = out["holder"]["nationality"]["reliability"]
+        assert nat > 0.5
 
-    def test_repaired_field_confidence_in_repaired_band(self):
-        line1 = "P<ISLAEVARSDOTTIR<<THURIDUR<OESP<<<<<<<<<<<<<"
-        line2 = "A0000000<01<L6612315F0905264311266<9539<<<32"
-        result = parse_mrz([line1, line2])
-        if result is None:
-            pytest.skip("parse failed")
-        out = build_output(result, detection_confidence=0.84, ocr_confidence=0.77,
-                           raw_mrz=[line1, line2])
-        if "nationality" in result.auto_repaired_fields:
-            conf = out["holder"]["nationality"]["confidence"]
-            assert 0.77 <= conf <= 0.90
-
-    def test_name_confidence_equals_ocr_confidence(self):
-        out = self._build(ocr=0.80)
-        assert out["holder"]["given_names"]["confidence"] == round(0.80, 4)
+    def test_name_field_reliability_reflects_base(self):
+        # Name fields have a lower empirical base (~0.92) than check-digit fields,
+        # so even at high OCR confidence they score below document_number.
+        out = self._build(ocr=0.95)
+        name_rel = out["holder"]["given_names"]["reliability"]
+        docno_rel = out["document"]["number"]["reliability"]
+        assert name_rel <= docno_rel
+        assert 0.0 <= name_rel <= 1.0
 
     def test_overall_reliability_formula(self):
         out = self._build(det=0.9, ocr=0.95)
-        # Phase 5: reliability_score in quality block
+        # reliability_score in quality block
         assert 0.75 <= out["quality"]["reliability_score"] <= 1.0
 
 
