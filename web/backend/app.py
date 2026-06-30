@@ -1,20 +1,7 @@
-"""
-FastAPI backend for the Passport Detection Trust Console.
-
-Wraps the existing Tesseract + OCR-B pipeline (Scripts.ocr.pipeline) behind a
-single /api/scan endpoint: accepts an uploaded passport image, runs detection +
-OCR + parsing, and returns the structured JSON plus an annotated preview (the
-detected MRZ box drawn on the image, base64-encoded) for the UI to display.
-
-Run from the project root:
-    uvicorn web.backend.app:app --reload --port 8000
-"""
 from __future__ import annotations
-
 import base64
 import sys
 from pathlib import Path
-
 import cv2
 import numpy as np
 from fastapi import FastAPI, File, HTTPException, UploadFile
@@ -43,7 +30,6 @@ _ALLOWED_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
 def _annotate(image: np.ndarray, detection) -> str:
-    """Draw the MRZ detection box on the image and return it as a base64 data URI."""
     annotated = image.copy()
     if detection is not None:
         x1, y1, x2, y2 = detection.box
@@ -65,7 +51,6 @@ def health() -> dict:
 
 @app.post("/api/scan")
 async def scan(file: UploadFile = File(...)) -> dict:
-    """Process one uploaded passport image and return parsed fields + preview."""
     suffix = Path(file.filename or "").suffix.lower()
     if suffix and suffix not in _ALLOWED_SUFFIXES:
         raise HTTPException(415, f"Unsupported file type: {suffix}")
