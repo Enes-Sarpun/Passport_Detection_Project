@@ -19,8 +19,10 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the entire project to the working directory
-# .dockerignore will prevent copying unnecessary files (like venv, node_modules)
 COPY . /app/
+
+# Download Tesseract OCR-B trained data
+RUN python Scripts/ocr/setup_model.py
 
 # Expose the port (Render uses PORT env variable, defaulting to 8000 here)
 EXPOSE 8000
