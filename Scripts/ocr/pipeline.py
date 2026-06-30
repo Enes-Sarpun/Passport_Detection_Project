@@ -54,7 +54,6 @@ def _infer_format(result: TesseractResult) -> tuple[str, int, int]:
     if max_len >= 33:
         return "TD2", TD2_LEN, 2
     # Short lines: could be genuine TD1 (3x30) or just garbage. Only call it TD1
-    # if there really are three substantial lines.
     substantial = sum(1 for ln_len in lengths if ln_len >= 25)
     if substantial >= 3:
         return "TD1", TD1_LEN, 3
@@ -76,8 +75,6 @@ def _mrz_likeness(text: str, line_len: int) -> float:
     length_score = 1.0 - abs(len(stripped) - line_len) / line_len
     length_score = max(0.0, length_score)
 
-    # Valid-charset ratio (after _normalize everything should be valid, but a
-    # mostly-filler line still gets penalised via fill_ratio).
     return 0.5 * fill_ratio + 0.5 * length_score
 
 
@@ -117,12 +114,7 @@ def _select_mrz_lines(
 
     best_pair: Optional[list[str]] = None
     best_key: tuple[int, float] = (-1, -1.0)
-    # Ordered pairs: (i, j) with i != j covers both line assignment and order.
-    # Ranking key, in priority order:
-    #   1. check-digit passes — resolves which line is L2 and the line order.
-    #   2. L1 structure score — when check digits tie (line 1 has none of its own),
-    #      prefer the line that looks like an ICAO name line. Rescues cases where
-    #      the OCR also picked up the passport's printed header as a candidate.
+   
     for i in range(len(pool)):
         for j in range(len(pool)):
             if i == j:
@@ -136,8 +128,6 @@ def _select_mrz_lines(
 
     best_cd = best_key[0]
     if best_cd <= 0 or best_pair is None:
-        # No check digit passed anywhere — keep the two most MRZ-like lines but
-        # flag for manual review (downstream sets a warning + low reliability).
         l1, l2 = _best_aligned_pair(pool[0], pool[1], line_len)
         return [l1, l2], True
 
@@ -156,6 +146,37 @@ def _align_result(result: TesseractResult, n_lines: int, line_len: int) -> tuple
     return [_align_line(raw_lines[i], line_len, i) for i in range(n_lines)], False
 
 
+import os as _os
+
+
+_OCR_MAX_WORKERS = int(_os.environ.get("OCR_MAX_WORKERS", "0"))  # 0 = auto (all)
+
+
+def _run_ocr_passes(candidates: list[np.ndarray]) -> list[TesseractResult]:
+    workers = _OCR_MAX_WORKERS or len(candidates)
+    workers = max(1, min(workers, len(candidates)))
+
+    if workers == 1:
+        results: list[TesseractResult] = []
+        for img in candidates:
+            try:
+                results.append(run_tesseract_ocrb(img, 2))
+            except Exception:
+                pass
+        return results
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    results = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(run_tesseract_ocrb, img, 2) for img in candidates]
+        for future in as_completed(futures):
+            try:
+                results.append(future.result())
+            except Exception:
+                pass
+    return results
+
+
 def _process_frame(
     image: np.ndarray,
     weights: Optional[Path] = None,
@@ -172,15 +193,7 @@ def _process_frame(
 
     candidates = _tesseract_preprocess(image, detection.box, n_lines=2)
 
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    all_results: list[TesseractResult] = []
-    with ThreadPoolExecutor(max_workers=len(candidates)) as pool:
-        futures = [pool.submit(run_tesseract_ocrb, img, 2) for img in candidates]
-        for future in as_completed(futures):
-            try:
-                all_results.append(future.result())
-            except Exception:
-                pass
+    all_results: list[TesseractResult] = _run_ocr_passes(candidates)
 
     if not all_results:
         return _ret(None, detection)
@@ -283,3 +296,5 @@ def process_image(
 
     except Exception as exc:
         return failure_output(f"error: {exc}")
+    
+    

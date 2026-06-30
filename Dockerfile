@@ -25,10 +25,23 @@ ENV TESSDATA_PREFIX=/app/Scripts/ocr/tessdata
 ENV YOLO_CONFIG_DIR=/tmp/Ultralytics
 ENV MPLCONFIGDIR=/tmp/matplotlib
 
+# Low-memory tuning for the 512 MB free tier: run OCR passes sequentially and
+# keep PyTorch single-threaded so peak RAM stays under the limit (avoids OOM
+# kills that the frontend sees as a CORS / failed-fetch error).
+ENV OCR_MAX_WORKERS=1
+ENV TORCH_NUM_THREADS=1
+
 # Render injects $PORT at runtime; default to 8000 for local docker runs.
 ENV PORT=8000
 
-# Copy requirements and install
+# Install CPU-only PyTorch first so ultralytics doesn't pull the much larger
+# CUDA build. There is no GPU on Render, and the CPU wheel uses far less disk
+# and runtime memory — important on the 512 MB free tier.
+RUN pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch torchvision
+
+# Copy requirements and install the rest.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
