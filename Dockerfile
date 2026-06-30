@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Set working directory
 WORKDIR /app
+ENV PYTHONPATH=/app
 
 # Copy requirements and install
 COPY requirements.txt .
