@@ -36,9 +36,9 @@ export default function App() {
     }).length;
   }, [fields, values]);
 
-  // Hero CTA → konsol bölümüne smooth scroll.
+  // Hero CTA → konsol bölümüne git (animasyonsuz, anlık).
   function scrollToConsole() {
-    consoleSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
+    consoleSectionRef.current?.scrollIntoView();
   }
 
   async function handleFile(file) {
@@ -55,7 +55,7 @@ export default function App() {
       const res = await fetch(apiUrl, { method: 'POST', body });
       if (!res.ok) {
         const detail = await res.json().catch(() => ({}));
-        throw new Error(detail.detail || `Sunucu hatası (${res.status})`);
+        throw new Error(detail.detail || `Server error (${res.status})`);
       }
       const json = await res.json();
       const elapsed = performance.now() - started;
@@ -65,7 +65,7 @@ export default function App() {
       setData(json);
       setPhase('done');
     } catch (e) {
-      setError(e.message || 'İşlem başarısız');
+      setError(e.message || 'Operation failed');
       setPhase('error');
     }
   }
@@ -92,7 +92,7 @@ export default function App() {
         id="console-section"
         ref={consoleSectionRef}
         className="console-section"
-        aria-label="MRZ Tarama Konsolu"
+        aria-label="MRZ Scan Console"
       >
         {/* Bölüm başlığı + eylem butonu */}
         <div className="console-header">
@@ -103,7 +103,7 @@ export default function App() {
           </div>
           {phase !== 'idle' && (
             <button className="btn btn--secondary" onClick={reset}>
-              Yeni Tarama
+              New Scan
             </button>
           )}
         </div>
@@ -124,18 +124,18 @@ export default function App() {
 
           {phase === 'error' && (
             <div className="errorbox">
-              <strong>İşlem başarısız:</strong> {error}
+              <strong>Operation failed:</strong> {error}
               <button className="btn btn--secondary" onClick={reset} style={{ marginLeft: 12 }}>
-                Tekrar dene
+                Try again
               </button>
             </div>
           )}
 
           {phase === 'done' && noMrz && (
             <div className="errorbox">
-              Bu görüntüde MRZ bölgesi tespit edilemedi veya çözümlenemedi.
+              No MRZ region could be detected or parsed in this image.
               <button className="btn btn--secondary" onClick={reset} style={{ marginLeft: 12 }}>
-                Yeni görüntü
+                New image
               </button>
             </div>
           )}
@@ -145,7 +145,7 @@ export default function App() {
             <>
               {data.preview && (
                 <div className="preview">
-                  <img src={data.preview} alt="Tespit edilen MRZ" />
+                  <img src={data.preview} alt="Detected MRZ" />
                 </div>
               )}
               <ReliabilityChart fields={fields} />

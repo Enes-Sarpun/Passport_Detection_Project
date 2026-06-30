@@ -34,8 +34,8 @@ export default function UploadZone({ onFile }) {
         <path d="M12 16V4m0 0l-4 4m4-4l4 4" strokeLinecap="round" strokeLinejoin="round" />
         <path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
-      <div className="dropzone__title">Pasaport görüntüsünü buraya bırakın</div>
-      <div className="dropzone__formats mono">JPG · PNG · BMP · WEBP — maks 15 MB</div>
+      <div className="dropzone__title">Drop a passport image here</div>
+      <div className="dropzone__formats mono">JPG · PNG · BMP · WEBP — max 15 MB</div>
     </div>
   );
 }

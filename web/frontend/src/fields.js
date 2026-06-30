@@ -20,17 +20,17 @@ export function isMandatory(reliability, found) {
 
 const isPresent = (v) => v !== undefined && v !== null && String(v).replace(/[<\s]/g, '') !== '';
 
-// Turkish UI labels per §9; "Not Found" status label stays English (spec).
+// UI labels per §9.
 const LABELS = {
-  document_type: 'Belge Tipi',
-  document_number: 'Belge No',
-  personal_number: 'Kişisel No',
-  nationality: 'Uyruk',
-  surname: 'Soyad',
-  given_names: 'Ad',
-  date_of_birth: 'Doğum Tarihi',
-  date_of_expiry: 'Son Geçerlilik',
-  sex: 'Cinsiyet',
+  document_type: 'Document Type',
+  document_number: 'Document No.',
+  personal_number: 'Personal No.',
+  nationality: 'Nationality',
+  surname: 'Surname',
+  given_names: 'Given Names',
+  date_of_birth: 'Date of Birth',
+  date_of_expiry: 'Date of Expiry',
+  sex: 'Sex',
 };
 
 // Build the ordered field rows from the API result object.

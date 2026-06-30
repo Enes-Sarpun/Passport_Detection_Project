@@ -1,16 +1,41 @@
 from __future__ import annotations
 import os
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 import cv2
 import numpy as np
 
-# Tesseract binary path
-_TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-# OCR-B tessdata — must be ASCII path, set via TESSDATA_PREFIX env variable.
+def _resolve_tesseract_cmd() -> str:
+    env = os.environ.get("TESSERACT_CMD")
+    if env:
+        return env
+    found = shutil.which("tesseract")
+    if found:
+        return found
+    return r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
-_TESSDATA_DIR = Path(r"C:\tessdata_ocrb")
+
+def _resolve_tessdata_dir() -> Path:
+    env = os.environ.get("TESSDATA_PREFIX")
+    if env:
+        return Path(env)
+    if os.name == "nt":
+        ascii_dir = Path(r"C:\tessdata_ocrb")
+        if (ascii_dir / "ocrb.traineddata").exists():
+            return ascii_dir
+    bundled = Path(__file__).parent / "tessdata"
+    if (bundled / "ocrb.traineddata").exists():
+        return bundled
+    return Path(r"C:\tessdata_ocrb")
+
+
+# Tesseract binary path (resolved per platform).
+_TESSERACT_CMD = _resolve_tesseract_cmd()
+
+# OCR-B tessdata — set via TESSDATA_PREFIX env variable.
+_TESSDATA_DIR = _resolve_tessdata_dir()
 
 _MRZ_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
 _MRZ_LENGTHS = (30, 36, 44)
@@ -78,7 +103,6 @@ def _read_image_ocrb(image: np.ndarray, n_lines: int) -> tuple[list[str], float]
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if image.ndim == 3 else image
     gray = _upscale(gray, min_h=_MIN_STRIP_H * n_lines)
 
-    # PSM 6: uniform block of text — reads all MRZ lines at once.
     config = (
         "--oem 1 --psm 6 "
         "-l ocrb "
@@ -118,9 +142,7 @@ def _read_image_ocrb(image: np.ndarray, n_lines: int) -> tuple[list[str], float]
         all_confs.extend(confs)
 
     avg_conf = sum(all_confs) / len(all_confs) if all_confs else 0.0
-    # Return ALL detected lines — Tesseract often finds a spurious extra line
-    # (border, guilloche, stamp). The pipeline's line-selection stage decides
-    # which lines are the real MRZ; truncating here would drop the data line.
+
     return result_lines, avg_conf
 
 

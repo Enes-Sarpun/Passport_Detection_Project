@@ -14,6 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /app
 ENV PYTHONPATH=/app
 
+# Tesseract config for the OCR engine (Scripts/ocr/engine.py reads these).
+# The OCR-B traineddata is downloaded into the repo's tessdata dir below, so
+# point TESSDATA_PREFIX there; tesseract is on PATH from the apt install above.
+ENV TESSERACT_CMD=/usr/bin/tesseract
+ENV TESSDATA_PREFIX=/app/Scripts/ocr/tessdata
+
 # Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

@@ -4,13 +4,13 @@
 import { useEffect, useRef, useState } from 'react';
 
 const SCAN_STEPS = [
-  'YOLO ile MRZ bölgesi tespit ediliyor…',
-  'MRZ bölgesi kırpılıyor ve hizalanıyor…',
-  'OCR-B ile satır 1 okunuyor…',
-  'OCR-B ile satır 2 okunuyor…',
-  'ICAO 9303 alanları çözümleniyor…',
-  'Kontrol haneleri doğrulanıyor…',
-  'Güvenilirlik skoru hesaplanıyor…',
+  'Detecting MRZ region with YOLO…',
+  'Cropping and aligning the MRZ region…',
+  'Reading line 1 with OCR-B…',
+  'Reading line 2 with OCR-B…',
+  'Parsing ICAO 9303 fields…',
+  'Validating check digits…',
+  'Computing reliability score…',
 ];
 
 export default function ScanConsole({ scanning, done, filename, durationMs }) {
@@ -38,9 +38,9 @@ export default function ScanConsole({ scanning, done, filename, durationMs }) {
         <span className="scan-strip__dot" />
         <span className="mono">{filename}</span>
         <span className="scan-strip__sep">·</span>
-        <span className="mono">{durationMs != null ? `${durationMs} ms` : 'tamamlandı'}</span>
+        <span className="mono">{durationMs != null ? `${durationMs} ms` : 'completed'}</span>
         <span className="scan-strip__sep">·</span>
-        <span className="label">Tarama tamam</span>
+        <span className="label">Scan complete</span>
       </div>
     );
   }

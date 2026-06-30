@@ -2,13 +2,13 @@
 
 # 🛂 Passport-OCR-YOLO
 
-![Proje Demo](gif/PDS.gif)
+![Project Demo](gif/PDS.gif)
 
-**YOLO ile MRZ tespiti · ICAO 9303 çözümleme · Tesseract + OCR-B ile yapılandırılmış JSON çıktısı**
+**MRZ detection with YOLO · ICAO 9303 parsing · structured JSON output with Tesseract + OCR-B**
 
-Pasaport ve kimlik belgelerindeki **MRZ (Machine Readable Zone)** bölgesini YOLO ile tespit eden,
-bu bölgeyi **Tesseract + OCR-B** ile okuyup çözümleyen ve sonuçları temiz bir **JSON** yapısına
-aktaran uçtan uca bir hat.
+An end-to-end pipeline that detects the **MRZ (Machine Readable Zone)** on passports and
+ID documents with YOLO, reads and parses that region with **Tesseract + OCR-B**, and exports
+the results as a clean **JSON** structure.
 
 <p>
   <img alt="Python" src="https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white">
@@ -22,147 +22,147 @@ aktaran uçtan uca bir hat.
 
 ---
 
-## 📌 Proje Amacı
+## 📌 Project Purpose
 
-Bu proje, pasaport ve seyahat belgelerinin görüntülerinden **otomatik veri çıkarımı** yapar:
+This project performs **automated data extraction** from images of passports and travel documents:
 
-1. **🔍 Tespit (Detection)** — YOLO modeli, belge üzerindeki **MRZ** bölgesini tespit eder ve kırpar.
-2. **🔤 OCR (Tesseract + OCR-B)** — Kırpılan MRZ bölgesi, MRZ'ye özel eğitilmiş **OCR-B** modeliyle okunur.
-3. **🧩 Çözümleme & Çıktı** — MRZ satırları ICAO 9303'e göre çözülür, doğrulanır ve **yapılandırılmış JSON** olarak kaydedilir.
+1. **🔍 Detection** — A YOLO model detects and crops the **MRZ** region on the document.
+2. **🔤 OCR (Tesseract + OCR-B)** — The cropped MRZ region is read with an MRZ-specific **OCR-B** model.
+3. **🧩 Parsing & Output** — MRZ lines are parsed per ICAO 9303, validated, and saved as **structured JSON**.
 
 ```text
    ┌──────────┐     ┌──────────┐     ┌──────────────┐     ┌──────────┐
-   │  Görüntü │ ──▶ │   YOLO   │ ──▶ │  Tesseract   │ ──▶ │   MRZ    │ ──▶  📄 JSON
-   │ (Passport)│    │ Tespiti  │     │   + OCR-B    │     │ Çözümleme│
+   │   Image  │ ──▶ │   YOLO   │ ──▶ │  Tesseract   │ ──▶ │   MRZ    │ ──▶  📄 JSON
+   │ (Passport)│    │ Detection│     │   + OCR-B    │     │  Parsing │
    └──────────┘     └──────────┘     └──────────────┘     └──────────┘
 ```
 
 ---
 
-## ✨ Özellikler
+## ✨ Features
 
-- 🎯 **YOLO tabanlı MRZ tespiti** — pasaport/kimlik üzerindeki MRZ bölgesini hızlı ve doğru biçimde bulur.
-- 🔤 **Tesseract + OCR-B** — MRZ'ye özel eğitilmiş OCR-B modeli; sentetik MRZ'de **%0 karakter hata oranı**.
-- 🧠 **ICAO 9303 MRZ çözümleme** — TD1 / TD2 / TD3 formatlarını destekleyen alan ayrıştırma.
-- ✅ **Checksum doğrulaması** — MRZ kontrol haneleriyle alan doğruluğunun denetimi ve otomatik onarım.
-- 🛠️ **Pozisyonel onarım** — tarih→rakam, ülke kodu→harf sınıf kısıtlarıyla OCR hatalarını düzeltir.
-- 📊 **Güvenilirlik skoru** — ground-truth'tan kalibre edilmiş `reliability_score` (lojistik regresyon, AUC 0.92); düşük güvenli okumalar otomatik manuel incelemeye yönlendirilir.
-- 🎯 **Alan bazında güvenilirlik** — her alan, GT'den ölçülmüş tarihsel doğruluğuna dayanan kendi `reliability` değerini taşır.
-- 📦 **Yapılandırılmış JSON çıktısı** — ülke, ad, soyad, belge kodu, tarihler ve geçerlilik durumu.
-- 🗃️ **SQLite referans veritabanı** — ülke ve belge bilgilerinin eşleştirilmesi için.
+- 🎯 **YOLO-based MRZ detection** — locates the MRZ region on a passport/ID quickly and accurately.
+- 🔤 **Tesseract + OCR-B** — MRZ-specific OCR-B model; **0% character error rate** on synthetic MRZ.
+- 🧠 **ICAO 9303 MRZ parsing** — field extraction supporting the TD1 / TD2 / TD3 formats.
+- ✅ **Checksum validation** — field-accuracy checks against MRZ check digits, with automatic repair.
+- 🛠️ **Positional repair** — fixes OCR errors using class constraints (date→digit, country code→letter).
+- 📊 **Reliability score** — a `reliability_score` calibrated from ground truth (logistic regression, AUC 0.92); low-confidence reads are automatically routed to manual review.
+- 🎯 **Per-field reliability** — each field carries its own `reliability` value, grounded in its historical accuracy measured from GT.
+- 📦 **Structured JSON output** — country, names, document code, dates, and validity status.
+- 🗃️ **SQLite reference database** — for matching country and document information.
 
 ---
 
-## 🗂️ Proje Yapısı
+## 🗂️ Project Structure
 
 ```text
 Passport-OCR-YOLO/
 ├── Scripts/
-│   ├── detection/          # MRZ tespiti
-│   │   ├── detect.py       #   YOLO ile MRZ bölgesi tespiti
-│   │   └── preprocess.py   #   görüntü kırpma / deskew / kontrast
-│   ├── ocr/                # Tesseract + OCR-B OCR motoru
-│   │   ├── engine.py       #   OCR-B okuma (--oem 1 --psm 6)
-│   │   ├── pipeline.py     #   tespit → OCR → satır seçimi → çözümleme hattı
-│   │   ├── setup_model.py  #   ocrb.traineddata indirici
-│   │   └── tessdata/       #   OCR-B modeli
-│   ├── parsing/            # MRZ çözümleme & çıktı
-│   │   ├── mrz_parse.py    #   ICAO 9303 çözümleme + kontrol hanesi onarımı
-│   │   ├── reconstruct.py  #   satır hizalama & doğrulama skorlama
-│   │   ├── schema.py       #   yapılandırılmış JSON çıktısı + reliability skoru
+│   ├── detection/          # MRZ detection
+│   │   ├── detect.py       #   MRZ region detection with YOLO
+│   │   └── preprocess.py   #   image cropping / deskew / contrast
+│   ├── ocr/                # Tesseract + OCR-B OCR engine
+│   │   ├── engine.py       #   OCR-B reading (--oem 1 --psm 6)
+│   │   ├── pipeline.py     #   detection → OCR → line selection → parsing pipeline
+│   │   ├── setup_model.py  #   ocrb.traineddata downloader
+│   │   └── tessdata/       #   OCR-B model
+│   ├── parsing/            # MRZ parsing & output
+│   │   ├── mrz_parse.py    #   ICAO 9303 parsing + check-digit repair
+│   │   ├── reconstruct.py  #   line alignment & validation scoring
+│   │   ├── schema.py       #   structured JSON output + reliability score
 │   │   ├── schema_helpers.py
 │   │   └── country_lookup.py
-│   └── YOLO/               # YOLO model ağırlıkları + eğitim notebook'u
-├── GroundTruth/            # Elle doğrulanmış GT + accuracy/kalibrasyon araçları
+│   └── YOLO/               # YOLO model weights + training notebook
+├── GroundTruth/            # Manually verified GT + accuracy/calibration tools
 │   ├── ground_truth.json
-│   ├── evaluate.py         #   CER + alan doğruluğu ölçümü
-│   └── calibrate.py        #   reliability skoru ağırlık kalibrasyonu
-├── tests/                  # MRZ çözümleme kabul testleri
-├── Images/                 # Görüntü verisi (git'e dahil değildir)
+│   ├── evaluate.py         #   CER + field-accuracy measurement
+│   └── calibrate.py        #   reliability-score weight calibration
+├── tests/                  # MRZ parsing acceptance tests
+├── Images/                 # Image data (not included in git)
 │   ├── MRZ_Data/
 │   └── Outputs/
 ├── SQL/
-│   └── europa_data.db      # Referans veritabanı (ülke / belge bilgileri)
-├── main_tess.py            # Tesseract + OCR-B CLI giriş noktası
+│   └── europa_data.db      # Reference database (country / document info)
+├── main_tess.py            # Tesseract + OCR-B CLI entry point
 ├── .gitignore
 ├── .gitattributes
 └── README.md
 ```
 
-> ℹ️ `Images/`, model ağırlıkları (`*.pt`, `*.onnx`) ve `runs/` çıktıları `.gitignore` ile depo dışında tutulur.
+> ℹ️ `Images/`, model weights (`*.pt`, `*.onnx`), and `runs/` outputs are kept out of the repo via `.gitignore`.
 
 ---
 
-## 🗄️ Veritabanı Şeması
+## 🗄️ Database Schema
 
-`SQL/europa_data.db` içindeki `europa_data` tablosu, çözümlenen belgelerin eşleştirilmesi ve
-referans verisi için kullanılır:
+The `europa_data` table in `SQL/europa_data.db` is used for matching parsed documents and
+for reference data:
 
-| Alan          | Tip     | Açıklama                          |
+| Field         | Type    | Description                       |
 |---------------|---------|----------------------------------|
-| `id`          | INTEGER | Birincil anahtar                 |
-| `country`     | TEXT    | Ülke                             |
-| `doc_code`    | TEXT    | Belge kodu (ör. `P`, `ID`)       |
-| `doc_type`    | TEXT    | Belge tipi                       |
-| `Name`        | TEXT    | Ad                               |
-| `Surname`     | TEXT    | Soyad                            |
-| `Descriptions`| TEXT    | Açıklama                         |
-| `date`        | TEXT    | Tarih                            |
-| `image_path`  | TEXT    | Görüntü yolu                     |
-| `source_url`  | TEXT    | Kaynak bağlantısı                |
+| `id`          | INTEGER | Primary key                      |
+| `country`     | TEXT    | Country                          |
+| `doc_code`    | TEXT    | Document code (e.g. `P`, `ID`)   |
+| `doc_type`    | TEXT    | Document type                    |
+| `Name`        | TEXT    | Name                             |
+| `Surname`     | TEXT    | Surname                          |
+| `Descriptions`| TEXT    | Description                      |
+| `date`        | TEXT    | Date                             |
+| `image_path`  | TEXT    | Image path                       |
+| `source_url`  | TEXT    | Source link                      |
 
 ---
 
-## 🚀 Kurulum
+## 🚀 Installation
 
 ```bash
-# Depoyu klonlayın
+# Clone the repository
 git clone <repo-url>
 cd Passport-OCR-YOLO
 
-# Sanal ortam oluşturun
+# Create a virtual environment
 python -m venv .venv
 # Windows
 .venv\Scripts\activate
 # Linux / macOS
 source .venv/bin/activate
 
-# Bağımlılıkları yükleyin
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-**Önerilen bağımlılıklar:** `ultralytics`, `opencv-python`, `pytesseract`, `numpy`, `pandas`.
+**Recommended dependencies:** `ultralytics`, `opencv-python`, `pytesseract`, `numpy`, `pandas`.
 
-> 🔧 Sistemde [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) kurulu olmalıdır
-> (Windows varsayılan yolu: `C:\Program Files\Tesseract-OCR\tesseract.exe`).
+> 🔧 [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) must be installed on the system
+> (default Windows path: `C:\Program Files\Tesseract-OCR\tesseract.exe`).
 
 ```bash
-# MRZ'ye özel OCR-B modelini indir (ocrb.traineddata) — tek seferlik
+# Download the MRZ-specific OCR-B model (ocrb.traineddata) — one time only
 python main_tess.py setup
 ```
 
 ---
 
-## 🧪 Kullanım
+## 🧪 Usage
 
 ```bash
-# Tek bir görüntüyü işle 
+# Process a single image
 python main_tess.py image "Images/MRZ_Data/images/2dfa28dd-TUR-AO-02001_265357.jpg"
 
-# Çıktıyı belirli bir klasöre yaz
-python main_tess.py image "<görüntü yolu>" --output-dir "Images/Outputs"
+# Write the output to a specific folder
+python main_tess.py image "<image path>" --output-dir "Images/Outputs"
 ```
 
-İşlenen her görüntü için iki dosya üretilir:
-`<isim>_tess_annotated.jpg` (MRZ kutusu işaretli görüntü) ve `<isim>_tess_ocr.json` (çözümlenmiş veri).
+Two files are produced for each processed image:
+`<name>_tess_annotated.jpg` (image with the MRZ box drawn) and `<name>_tess_ocr.json` (parsed data).
 
-### Örnek İşlem Sonucu
+### Example Result
 
 ![Annotated Image](gif/tess_annotated_sample.jpg)
 
-Her alan, kendi **`reliability`** değerini taşır — alanın ground-truth'tan ölçülmüş
-tarihsel doğruluğunun, o belgenin canlı sinyalleriyle (check-digit, OCR güveni)
-modüle edilmiş hâli. `quality.reliability_score` ise belgenin genel güvenilirliği.
+Each field carries its own **`reliability`** value — the field's historical accuracy measured
+from ground truth, modulated by that document's live signals (check digit, OCR confidence).
+`quality.reliability_score` is the document's overall reliability.
 
 ```json
 {
@@ -204,22 +204,22 @@ modüle edilmiş hâli. `quality.reliability_score` ise belgenin genel güvenili
 
 ---
 
-## 🔄 İşleyiş Akışı
+## 🔄 Processing Flow
 
-| Adım | Bileşen              | Görev                                                          |
-|------|----------------------|----------------------------------------------------------------|
-| 1️⃣  | **YOLO**             | Belge görüntüsünde MRZ bölgesini tespit eder ve kırpar.        |
-| 2️⃣  | **Tesseract + OCR-B**| Kırpılan MRZ bölgesindeki karakterleri OCR-B modeliyle okur.   |
-| 3️⃣  | **Parser**           | MRZ satırlarını ICAO 9303'e göre alanlara ayırır.              |
-| 4️⃣  | **Validator**        | Kontrol haneleriyle doğrular, güvenilirlik skorunu hesaplar.   |
-| 5️⃣  | **Export**           | Sonuçları yapılandırılmış JSON olarak kaydeder.                |
+| Step | Component             | Task                                                          |
+|------|-----------------------|---------------------------------------------------------------|
+| 1️⃣  | **YOLO**              | Detects and crops the MRZ region in the document image.       |
+| 2️⃣  | **Tesseract + OCR-B** | Reads the characters in the cropped MRZ region with OCR-B.    |
+| 3️⃣  | **Parser**            | Splits the MRZ lines into fields per ICAO 9303.               |
+| 4️⃣  | **Validator**         | Validates with check digits and computes the reliability score.|
+| 5️⃣  | **Export**            | Saves the results as structured JSON.                         |
 
 ---
 
-## 🤝 Katkıda Bulunma
+## 🤝 Contributing
 
-Katkılar memnuniyetle karşılanır! Lütfen bir `issue` açın veya `pull request` gönderin.
+Contributions are welcome! Please open an `issue` or submit a `pull request`.
 
-## 📄 Lisans
+## 📄 License
 
-Bu proje **MIT Lisansı** ile lisanslanmıştır.
+This project is licensed under the **MIT License**.

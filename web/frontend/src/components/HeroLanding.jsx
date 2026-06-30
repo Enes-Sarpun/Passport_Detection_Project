@@ -11,31 +11,31 @@ const VIDEO_URLS = [
   'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260627_094019_4214ea73-b963-46a4-8327-61489192de99.mp4',
 ];
 
-// 3 tema — video/css katmanlarına karşılık gelir
+// 3 themes — correspond to the video/css layers
 const SLIDES = [
-  { id: 0, tag: '01', label: 'TEMA 1' },
-  { id: 1, tag: '02', label: 'TEMA 2' },
-  { id: 2, tag: '03', label: 'TEMA 3' },
+  { id: 0, tag: '01', label: 'THEME 1' },
+  { id: 1, tag: '02', label: 'THEME 2' },
+  { id: 2, tag: '03', label: 'THEME 3' },
 ];
 
-// Ground-truth'tan kalibre edilmiş gerçek proje rakamları
+// Real project figures calibrated from ground-truth
 const TRUST_POINTS = [
-  { k: 'Karakter Doğruluğu', v: '%98.3' },
-  { k: 'Alan Doğruluğu',     v: '%96.9' },
-  { k: 'Güvenilirlik AUC',   v: '0.916' },
-  { k: 'Hata Yakalama',      v: '%100'  },
+  { k: 'Character Accuracy', v: '98.3%' },
+  { k: 'Field Accuracy',     v: '96.9%' },
+  { k: 'Reliability AUC',    v: '0.916' },
+  { k: 'Error Recall',       v: '100%'  },
 ];
 
-// Yalnızca çalışan 2 nav linki
+// Only the 2 working nav links
 const NAV_LINKS = [
-  { idx: '01', label: 'Genel Bakış', target: 'top'     },
-  { idx: '02', label: 'Konsol',      target: 'console' },
+  { idx: '01', label: 'Overview', target: 'top'     },
+  { idx: '02', label: 'Console',  target: 'console' },
 ];
 
 const MRZ_TEXT = [
   'P<TURMRZ<OCR<YOLO<<<<<<<<<<<<<<<<<<<<<<<<<<<',
   'ZD000078<7TUR8501019M1801145<<<<<<<<<<<<<<04',
-  'ICAO9303<DOGRULAMA<GUVEN<KONSOL<TESPIT<<<<<<',
+  'ICAO9303<VALIDATION<TRUST<CONSOLE<DETECT<<<<',
 ].join('   ·   ');
 const MRZ_WATERMARK = `${MRZ_TEXT}   ${MRZ_TEXT}   ${MRZ_TEXT}`;
 
@@ -60,7 +60,7 @@ function useReveal(threshold = 0.15) {
 function Clock() {
   const [now, setNow] = useState('');
   useEffect(() => {
-    const fmt = new Intl.DateTimeFormat('tr-TR', {
+    const fmt = new Intl.DateTimeFormat('en-GB', {
       hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
     });
     const tick = () => setNow(fmt.format(new Date()));
@@ -132,11 +132,11 @@ export default function HeroLanding({ onStart }) {
       const appRoot = document.querySelector('.app-root');
       const section = document.getElementById('console-section');
       if (appRoot && section) {
-        appRoot.scrollTo({ top: section.offsetTop, behavior: 'smooth' });
+        appRoot.scrollTo({ top: section.offsetTop });
       }
     } else {
       const appRoot = document.querySelector('.app-root');
-      if (appRoot) appRoot.scrollTo({ top: 0, behavior: 'smooth' });
+      if (appRoot) appRoot.scrollTo({ top: 0 });
     }
     setMenuOpen(false);
   }, []);
@@ -150,12 +150,12 @@ export default function HeroLanding({ onStart }) {
     });
   }, []);
 
-  // onStart → console section'a scroll
+  // onStart → console section'a git (animasyonsuz)
   const handleStart = useCallback(() => {
     const appRoot = document.querySelector('.app-root');
     const section = document.getElementById('console-section');
     if (appRoot && section) {
-      appRoot.scrollTo({ top: section.offsetTop, behavior: 'smooth' });
+      appRoot.scrollTo({ top: section.offsetTop });
     }
     if (onStart) onStart();
   }, [onStart]);
@@ -196,7 +196,7 @@ export default function HeroLanding({ onStart }) {
 
       {/* ── NAVBAR ── */}
       <header className="hero-nav" role="banner">
-        <nav className="hero-nav__left" aria-label="Ana gezinme">
+        <nav className="hero-nav__left" aria-label="Main navigation">
           {NAV_LINKS.map(({ idx, label, target }) => (
             <a
               key={label}
@@ -219,10 +219,10 @@ export default function HeroLanding({ onStart }) {
         <button
           className="hero-nav__toggle"
           onClick={() => setMenuOpen((v) => !v)}
-          aria-label={menuOpen ? 'Menüyü kapat' : 'Menüyü aç'}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
           aria-expanded={menuOpen}
         >
-          {menuOpen ? 'Kapat ×' : 'Menü'}
+          {menuOpen ? 'Close ×' : 'Menu'}
         </button>
 
         <div className={`hero-nav__panel ${menuOpen ? 'is-open' : ''}`} role="navigation">
@@ -243,9 +243,9 @@ export default function HeroLanding({ onStart }) {
 
       {/* ── ANA İÇERİK ── */}
       <main className="hero-main" ref={revealRef}>
-        {/* Üst: katman seçici + hazır durumu */}
-        <section className="hero-upper" aria-label="Modül seçici">
-          <div className="hero-switch" role="tablist" aria-label="Pipeline adımları">
+        {/* Top: layer selector + ready status */}
+        <section className="hero-upper" aria-label="Module selector">
+          <div className="hero-switch" role="tablist" aria-label="Pipeline steps">
             {SLIDES.map((s) => (
               <button
                 key={s.id}
@@ -261,12 +261,12 @@ export default function HeroLanding({ onStart }) {
 
           <div className="hero-avail" role="status" aria-live="polite">
             <span className="hero-dot" />
-            <span>Doğrulamaya hazır</span>
+            <span>Ready to verify</span>
           </div>
         </section>
 
-        {/* Alt: dev başlık + pitch + CTA */}
-        <section className="hero-lower" aria-label="Giriş mesajı">
+        {/* Bottom: oversized title + pitch + CTA */}
+        <section className="hero-lower" aria-label="Intro message">
           <div className={`hero-name ${revealed ? 'reveal-up' : ''}`} aria-label="Passport Detection System">
             Passport<br />Detection<span className="hero-name__dot">.</span>
           </div>
@@ -276,14 +276,14 @@ export default function HeroLanding({ onStart }) {
             style={{ animationDelay: revealed ? '0.08s' : '0s' }}
           >
             <p className="hero-pitch__text">
-              Pasaport ve kimlik belgelerindeki MRZ bölgesini{' '}
-              <strong>YOLO</strong> ile tespit eder, <strong>Tesseract OCR-B</strong>{' '}
-              ile okur ve <strong>ICAO 9303</strong>'e göre doğrular — her alan
-              kontrol edilir, düşük güvenli okumalar otomatik olarak manuel
-              incelemeye yönlendirilir.
+              Detects the MRZ region on passports and ID documents with{' '}
+              <strong>YOLO</strong>, reads it with <strong>Tesseract OCR-B</strong>,{' '}
+              and validates it against <strong>ICAO 9303</strong> — every field is
+              checked, and low-confidence reads are automatically routed to manual
+              review.
             </p>
 
-            <div className="hero-trust" aria-label="Performans metrikleri">
+            <div className="hero-trust" aria-label="Performance metrics">
               {TRUST_POINTS.map((p) => (
                 <div key={p.k} className="hero-trust__item">
                   <span className="hero-trust__v mono">{p.v}</span>
@@ -295,9 +295,9 @@ export default function HeroLanding({ onStart }) {
             <button
               className="hero-cta"
               onClick={handleStart}
-              aria-label="Pasaport taramasını başlat"
+              aria-label="Start passport scan"
             >
-              taramaya başla ↓
+              start scanning ↓
             </button>
           </div>
         </section>
@@ -306,7 +306,7 @@ export default function HeroLanding({ onStart }) {
       {/* Aşağı kaydır işareti */}
       <div className="hero-scroll-hint" aria-hidden="true" onClick={handleStart}>
         <span className="hero-scroll-hint__line" />
-        <span className="hero-scroll-hint__text">kaydır</span>
+        <span className="hero-scroll-hint__text">scroll</span>
       </div>
 
       {/* Hero-konsol geçiş blur fade */}

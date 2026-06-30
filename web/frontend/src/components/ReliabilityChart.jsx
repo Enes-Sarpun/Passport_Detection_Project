@@ -28,19 +28,19 @@ export default function ReliabilityChart({ fields }) {
   return (
     <section className="chart">
       <div className="chart__head">
-        <h3>Güvenilirlik Görünümü</h3>
-        <span className="chart__threshold-note mono">eşik 0.75</span>
+        <h3>Reliability Overview</h3>
+        <span className="chart__threshold-note mono">threshold 0.75</span>
       </div>
 
       {below.length > 0 && (
         <>
-          <div className="chart__divider chart__divider--below">Eşiğin altında</div>
+          <div className="chart__divider chart__divider--below">Below threshold</div>
           {below.map((f) => <Bar key={f.key} f={f} />)}
         </>
       )}
       {above.length > 0 && (
         <>
-          {below.length > 0 && <div className="chart__divider">Eşiğin üstünde</div>}
+          {below.length > 0 && <div className="chart__divider">Above threshold</div>}
           {above.map((f) => <Bar key={f.key} f={f} />)}
         </>
       )}

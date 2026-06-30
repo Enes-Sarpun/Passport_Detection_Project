@@ -23,8 +23,6 @@
   flex-direction: column;
   font-family: var(--font-hero);
   -webkit-font-smoothing: antialiased;
-  /* Scroll snap — stop olmadan daha akıcı */
-  scroll-snap-align: start;
 }
 
 /* ================================================================

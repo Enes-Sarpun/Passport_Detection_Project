@@ -8,14 +8,14 @@ export default function SaveGate({ unresolved, saved, onSave }) {
     <section className="savegate">
       <div className="savegate__helper">
         {saved ? (
-          <span className="savegate__ok">Kaydedildi.</span>
+          <span className="savegate__ok">Saved.</span>
         ) : blocked ? (
           <span>
             <span className="mono savegate__count">{unresolved}</span>{' '}
-            alan kaydetmeden önce düzeltme gerektiriyor
+            {unresolved === 1 ? 'field requires' : 'fields require'} correction before saving
           </span>
         ) : (
-          <span>Tüm alanlar çözüldü — kaydedilebilir.</span>
+          <span>All fields resolved — ready to save.</span>
         )}
       </div>
       <button
@@ -23,7 +23,7 @@ export default function SaveGate({ unresolved, saved, onSave }) {
         disabled={blocked || saved}
         onClick={onSave}
       >
-        {saved ? 'Kaydedildi' : 'Doğrula ve Kaydet'}
+        {saved ? 'Saved' : 'Verify and Save'}
       </button>
     </section>
   );

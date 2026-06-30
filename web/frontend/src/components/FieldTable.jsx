@@ -28,15 +28,15 @@ export default function FieldTable({ fields, values, onChange }) {
   return (
     <section className="ftable">
       <div className="ftable__head">
-        <h3>Çözümlenen Alanlar</h3>
+        <h3>Parsed Fields</h3>
       </div>
 
       <div className="ftable__grid ftable__grid--header label">
-        <span>Alan</span>
-        <span>Değer</span>
-        <span className="ftable__num">Skor</span>
-        <span>Güvenilirlik</span>
-        <span>Durum</span>
+        <span>Field</span>
+        <span>Value</span>
+        <span className="ftable__num">Score</span>
+        <span>Reliability</span>
+        <span>Status</span>
       </div>
 
       {fields.map((f) => {
@@ -52,7 +52,7 @@ export default function FieldTable({ fields, values, onChange }) {
                 <input
                   className={`field-input mono ${f.mandatory ? 'field-input--mandatory' : 'field-input--optional'}`}
                   value={corrected}
-                  placeholder={f.found ? '' : 'Değer girin'}
+                  placeholder={f.found ? '' : 'Enter a value'}
                   onChange={(e) => onChange(f.key, e.target.value)}
                   aria-label={f.label}
                 />
@@ -61,11 +61,11 @@ export default function FieldTable({ fields, values, onChange }) {
               )}
               {f.mandatory && (
                 <span className="field-hint field-hint--req">
-                  <Lock /> {f.found ? 'Kaydetmeden önce gerekli' : 'Bu alan okunamadı — değer girin'}
+                  <Lock /> {f.found ? 'Required before saving' : 'Could not read this field — enter a value'}
                 </span>
               )}
               {!f.mandatory && f.status === 'review' && (
-                <span className="field-hint field-hint--opt">Opsiyonel — skor eşik üstünde</span>
+                <span className="field-hint field-hint--opt">Optional — score above threshold</span>
               )}
               {f.extra && <span className="field-extra">{f.extra}</span>}
             </div>

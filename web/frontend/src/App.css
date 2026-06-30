@@ -2,14 +2,10 @@
    Paper-white data-dense canvas, one dark scan slab, blue for actions only,
    reliability color only in badges/bars, literal 0.75 threshold lines. */
 
-/* ---- Single-page root — scroll snap container ---- */
+/* ---- Single-page root — serbest scroll (snap animasyonu kaldırıldı) ---- */
 .app-root {
   height: 100vh;
   overflow-y: scroll;
-  scroll-snap-type: y mandatory;
-  scroll-behavior: smooth;
-  /* GPU optimizasyonu */
-  will-change: scroll-position;
   overscroll-behavior: none;
   /* Firefox scrollbar */
   scrollbar-width: thin;
@@ -20,8 +16,6 @@
 .console-section {
   background: var(--bg);
   min-height: 100vh;
-  /* Scroll snap — stop kaldırıldı, daha akıcı */
-  scroll-snap-align: start;
   border-top: 1px solid rgba(34, 197, 94, 0.12);
 }
 
