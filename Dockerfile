@@ -20,6 +20,14 @@ ENV PYTHONPATH=/app
 ENV TESSERACT_CMD=/usr/bin/tesseract
 ENV TESSDATA_PREFIX=/app/Scripts/ocr/tessdata
 
+# Ultralytics writes a config/cache dir; /root/.config is not writable on Render.
+# Point it at a writable location to silence the warning and avoid any stall.
+ENV YOLO_CONFIG_DIR=/tmp/Ultralytics
+ENV MPLCONFIGDIR=/tmp/matplotlib
+
+# Render injects $PORT at runtime; default to 8000 for local docker runs.
+ENV PORT=8000
+
 # Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -33,6 +41,6 @@ RUN python Scripts/ocr/setup_model.py
 # Expose the port (Render uses PORT env variable, defaulting to 8000 here)
 EXPOSE 8000
 
-# Start Uvicorn, pointing to web.backend.app:app
-# Render/Railway will inject $PORT, so we bind to 0.0.0.0 and $PORT
-CMD uvicorn web.backend.app:app --host 0.0.0.0 --port ${PORT:-8000}
+# Start Uvicorn via a tiny launcher that reads $PORT itself, so binding never
+# depends on shell variable expansion (the cause of Render's "No open ports").
+CMD ["python", "-m", "web.backend.run"]
