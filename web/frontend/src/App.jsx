@@ -51,7 +51,8 @@ export default function App() {
     try {
       const body = new FormData();
       body.append('file', file);
-      const res = await fetch('/api/scan', { method: 'POST', body });
+      const apiUrl = import.meta.env.VITE_API_URL || '/api/scan';
+      const res = await fetch(apiUrl, { method: 'POST', body });
       if (!res.ok) {
         const detail = await res.json().catch(() => ({}));
         throw new Error(detail.detail || `Sunucu hatası (${res.status})`);
