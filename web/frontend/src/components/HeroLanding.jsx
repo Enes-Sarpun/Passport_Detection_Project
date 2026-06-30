@@ -132,11 +132,11 @@ export default function HeroLanding({ onStart }) {
       const appRoot = document.querySelector('.app-root');
       const section = document.getElementById('console-section');
       if (appRoot && section) {
-        appRoot.scrollTo({ top: section.offsetTop });
+        appRoot.scrollTo({ top: section.offsetTop, behavior: 'smooth' });
       }
     } else {
       const appRoot = document.querySelector('.app-root');
-      if (appRoot) appRoot.scrollTo({ top: 0 });
+      if (appRoot) appRoot.scrollTo({ top: 0, behavior: 'smooth' });
     }
     setMenuOpen(false);
   }, []);
@@ -150,13 +150,9 @@ export default function HeroLanding({ onStart }) {
     });
   }, []);
 
-  // onStart → console section'a git (animasyonsuz)
+  // onStart → App'in scrollToConsole'u animasyonlu kaydırmayı yapar (tek kaynak;
+  // burada ayrıca scroll yapmak çift kaymaya yol açıyordu).
   const handleStart = useCallback(() => {
-    const appRoot = document.querySelector('.app-root');
-    const section = document.getElementById('console-section');
-    if (appRoot && section) {
-      appRoot.scrollTo({ top: section.offsetTop });
-    }
     if (onStart) onStart();
   }, [onStart]);
 

@@ -36,9 +36,9 @@ export default function App() {
     }).length;
   }, [fields, values]);
 
-  // Hero CTA → konsol bölümüne git (animasyonsuz, anlık).
+  // Hero CTA → konsol bölümüne animasyonlu (smooth) kaydır.
   function scrollToConsole() {
-    consoleSectionRef.current?.scrollIntoView();
+    consoleSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   }
 
   async function handleFile(file) {

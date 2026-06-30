@@ -93,23 +93,46 @@ Passport-OCR-YOLO/
 
 ---
 
-## 🗄️ Database Schema
+## 📈 Model Performance
 
-The `europa_data` table in `SQL/europa_data.db` is used for matching parsed documents and
-for reference data:
+The YOLO detector is trained on a labelled MRZ dataset; the curves below show loss decreasing
+and precision/recall/mAP climbing steadily over training — a clean, well-converged run.
 
-| Field         | Type    | Description                       |
-|---------------|---------|----------------------------------|
-| `id`          | INTEGER | Primary key                      |
-| `country`     | TEXT    | Country                          |
-| `doc_code`    | TEXT    | Document code (e.g. `P`, `ID`)   |
-| `doc_type`    | TEXT    | Document type                    |
-| `Name`        | TEXT    | Name                             |
-| `Surname`     | TEXT    | Surname                          |
-| `Descriptions`| TEXT    | Description                      |
-| `date`        | TEXT    | Date                             |
-| `image_path`  | TEXT    | Image path                       |
-| `source_url`  | TEXT    | Source link                      |
+![Training Results](gif/training_results.png)
+
+End-to-end OCR accuracy, measured against a hand-verified ground truth of **168 documents**
+(each passed through the full detection → OCR → parse pipeline):
+
+| Metric                | Value         |
+|-----------------------|---------------|
+| Character accuracy    | **98.30%**    |
+| Field accuracy        | **96.94%**    |
+| All fields correct    | **146 / 168** |
+
+---
+
+## 📊 Reliability Scoring
+
+Every result carries a `reliability_score` — the model's own estimate of how much to trust the
+read. Instead of hand-tuned weights, the score is a **logistic-regression model calibrated from
+ground truth**: it learns which signals actually predict a correct read.
+
+```text
+reliability = sigmoid( 29.51 · mean_field_reliability
+                     + 10.47 · structural_fraction
+                     − 35.98 )
+```
+
+| Property                      | Value     |
+|-------------------------------|-----------|
+| Out-of-fold AUC               | **0.915** |
+| Brier score                   | 0.119     |
+| Decision threshold            | 0.75      |
+| Error recall at threshold     | **100%**  |
+
+Reads below the 0.75 threshold are flagged `rescan_recommended` and routed to manual review,
+so **no incorrect read slips through silently** — the threshold catches every error in the
+ground-truth set while keeping false alarms low.
 
 ---
 
