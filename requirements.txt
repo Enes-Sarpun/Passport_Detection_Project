@@ -7,3 +7,5 @@ ultralytics
 pytesseract
 pycountry
 requests
+psycopg[binary]
+psycopg_pool

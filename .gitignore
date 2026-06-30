@@ -43,3 +43,6 @@ GroundTruth/error_review/
 GroundTruth/accuracy_report.csv
 GroundTruth/calibration_data.csv
 GroundTruth/eval_log.txt
+
+# ---- Active-learning dataset exports (türetilen, görseller içerir) ----
+export/

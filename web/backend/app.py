@@ -1,10 +1,13 @@
 from __future__ import annotations
 import base64
+import hashlib
+import json
 import sys
 from pathlib import Path
+from typing import Any, Optional
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
 # Make the project root importable so `Scripts.*` resolves regardless of CWD.
@@ -14,8 +17,18 @@ if str(_ROOT) not in sys.path:
 
 from Scripts.ocr.pipeline import _process_frame  # noqa: E402
 from Scripts.parsing.schema import failure_output  # noqa: E402
+from web.backend import db  # noqa: E402
 
 app = FastAPI(title="Passport Detection Trust Console", version="1.0")
+
+
+@app.on_event("startup")
+def _startup() -> None:
+    # Create the scan_records table if a database is configured; no-op otherwise.
+    try:
+        db.init_schema()
+    except Exception:  # pragma: no cover - never block startup on DB issues
+        pass
 
 # The React dev server runs on a different origin (Vite default 5173); allow it.
 app.add_middleware(
@@ -47,6 +60,97 @@ def _annotate(image: np.ndarray, detection) -> str:
 @app.get("/api/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+# Map each editable field key (as the frontend emits in corrected_fields) to the
+# value the model produced, pulled out of the scan's model_output JSON. Mirrors
+# the field set in web/frontend/src/fields.js.
+def _model_field_values(model_output: dict) -> dict[str, str]:
+    if not isinstance(model_output, dict):
+        return {}
+    d = model_output.get("document") or {}
+    h = model_output.get("holder") or {}
+    dt = model_output.get("dates") or {}
+
+    def s(v: Any) -> str:
+        return "" if v is None else str(v)
+
+    return {
+        "document_type": s((d.get("type") or {}).get("code")),
+        "document_number": s((d.get("number") or {}).get("value")),
+        "personal_number": s((d.get("personal_number") or {}).get("value")),
+        "nationality": s((h.get("nationality") or {}).get("code")),
+        "surname": s((h.get("surname") or {}).get("value")),
+        "given_names": s((h.get("given_names") or {}).get("value")),
+        "date_of_birth": s((dt.get("date_of_birth") or {}).get("iso")),
+        "date_of_expiry": s((dt.get("date_of_expiry") or {}).get("iso")),
+        "sex": s((h.get("sex") or {}).get("code")),
+    }
+
+
+def _is_human_corrected(model_output: dict, corrected: dict) -> bool:
+    """True if any corrected field value differs from what the model produced."""
+    if not isinstance(corrected, dict):
+        return False
+    model_vals = _model_field_values(model_output)
+    for key, val in corrected.items():
+        if str(val).strip() != str(model_vals.get(key, "")).strip():
+            return True
+    return False
+
+
+def _parse_json_field(raw: Optional[str], field_name: str) -> Any:
+    if raw is None:
+        return None
+    try:
+        return json.loads(raw)
+    except (ValueError, TypeError):
+        raise HTTPException(400, f"Invalid JSON in '{field_name}'")
+
+
+@app.post("/api/save")
+async def save(
+    file: UploadFile = File(...),
+    model_output: str = Form(...),
+    corrected_fields: str = Form(...),
+) -> dict:
+    if not db.is_available():
+        raise HTTPException(503, "Database not configured; record not saved")
+
+    suffix = Path(file.filename or "").suffix.lower()
+    if suffix and suffix not in _ALLOWED_SUFFIXES:
+        raise HTTPException(415, f"Unsupported file type: {suffix}")
+
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(400, "Empty file")
+    if len(raw) > _MAX_BYTES:
+        raise HTTPException(413, "File too large (max 15 MB)")
+
+    model = _parse_json_field(model_output, "model_output")
+    corrected = _parse_json_field(corrected_fields, "corrected_fields")
+
+    quality = (model or {}).get("quality") or {}
+    document = (model or {}).get("document") or {}
+    reliability = quality.get("reliability_score")
+    mrz_format = document.get("mrz_format")
+
+    try:
+        record_id = db.insert_record(
+            filename=file.filename,
+            image=raw,
+            image_sha256=hashlib.sha256(raw).hexdigest(),
+            image_mime=file.content_type,
+            model_output=model,
+            corrected_fields=corrected,
+            human_corrected=_is_human_corrected(model or {}, corrected or {}),
+            reliability_score=reliability,
+            mrz_format=mrz_format,
+        )
+    except Exception as exc:
+        raise HTTPException(500, f"Save failed: {exc}")
+
+    return {"saved": True, "id": record_id}
 
 
 @app.post("/api/scan")

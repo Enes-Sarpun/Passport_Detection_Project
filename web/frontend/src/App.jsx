@@ -19,6 +19,9 @@ export default function App() {
   const [data, setData] = useState(null);       // { result, preview }
   const [values, setValues] = useState({});     // kullanıcı düzeltmeleri
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);  // /api/save isteği sürüyor
+  const [saveError, setSaveError] = useState('');
+  const [scanFile, setScanFile] = useState(null); // save'de yeniden gönderilecek dosya
   const [error, setError] = useState('');
   const consoleSectionRef = useRef(null);
 
@@ -43,8 +46,10 @@ export default function App() {
 
   async function handleFile(file) {
     setFilename(file.name);
+    setScanFile(file);
     setPhase('scanning');
     setSaved(false);
+    setSaveError('');
     setValues({});
     setError('');
     const started = performance.now();
@@ -70,11 +75,46 @@ export default function App() {
     }
   }
 
+  // "Verify and Save" → görseli + model çıktısını + son alan değerlerini
+  // /api/save'e gönderir. Görsel backend'e yeniden yüklenir (stateless).
+  async function handleSave() {
+    if (!data?.result || !scanFile || saving) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      // Her alanın son değeri: kullanıcı düzeltmesi varsa o, yoksa model değeri.
+      const corrected = {};
+      for (const f of fields) {
+        corrected[f.key] = (values[f.key] ?? f.value ?? '').trim();
+      }
+      const body = new FormData();
+      body.append('file', scanFile);
+      body.append('model_output', JSON.stringify(data.result));
+      body.append('corrected_fields', JSON.stringify(corrected));
+
+      const scanUrl = import.meta.env.VITE_API_URL || '/api/scan';
+      const saveUrl = import.meta.env.VITE_SAVE_URL || scanUrl.replace(/\/scan$/, '/save');
+      const res = await fetch(saveUrl, { method: 'POST', body });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.detail || `Server error (${res.status})`);
+      }
+      setSaved(true);
+    } catch (e) {
+      setSaveError(e.message || 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function reset() {
     setPhase('idle');
     setData(null);
     setValues({});
     setSaved(false);
+    setSaving(false);
+    setSaveError('');
+    setScanFile(null);
     setError('');
     setDurationMs(null);
     setFilename('');
@@ -160,7 +200,9 @@ export default function App() {
               <SaveGate
                 unresolved={unresolved}
                 saved={saved}
-                onSave={() => setSaved(true)}
+                saving={saving}
+                saveError={saveError}
+                onSave={handleSave}
               />
             </>
           )}

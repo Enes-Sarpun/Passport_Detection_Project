@@ -223,6 +223,7 @@
 .savegate__helper { font-size: 13px; color: var(--ink-muted); }
 .savegate__count { color: var(--mandatory-ring); font-weight: 500; }
 .savegate__ok { color: var(--score-high); font-weight: 600; }
+.savegate__error { color: var(--mandatory-ring); font-weight: 600; }
 
 /* ---- Buttons (§4) ---- */
 .btn { border-radius: 4px; font-size: 13px; font-weight: 600; padding: 9px 20px; border: 1px solid transparent; transition: background .15s; }
