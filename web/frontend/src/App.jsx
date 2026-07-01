@@ -9,6 +9,7 @@ import UploadZone from './components/UploadZone';
 import ScanConsole from './components/ScanConsole';
 import ReliabilityChart from './components/ReliabilityChart';
 import FieldTable from './components/FieldTable';
+import MrzEditor from './components/MrzEditor';
 import SaveGate from './components/SaveGate';
 import { extractFields } from './fields';
 
@@ -22,6 +23,7 @@ export default function App() {
   const [saving, setSaving] = useState(false);  // /api/save isteği sürüyor
   const [saveError, setSaveError] = useState('');
   const [scanFile, setScanFile] = useState(null); // save'de yeniden gönderilecek dosya
+  const [mrzLines, setMrzLines] = useState([]);   // düzenlenebilir ham MRZ satırları
   const [error, setError] = useState('');
   const consoleSectionRef = useRef(null);
 
@@ -30,12 +32,15 @@ export default function App() {
     [data]
   );
 
-  // Zorunlu alanlardan dolu olmayanları say (save gate canlı engeli).
+  // Kural A: zorunlu (mandatory) bir alan BOŞ ise VEYA model değeriyle AYNI
+  // (düzeltilmemiş) ise "çözülmemiş" say — düzeltilmeden kaydedilemez.
   const unresolved = useMemo(() => {
     return fields.filter((f) => {
       if (!f.mandatory) return false;
       const v = (values[f.key] ?? f.value ?? '').trim();
-      return v === '';
+      if (v === '') return true;
+      // Kullanıcı değeri model çıktısıyla aynıysa düzeltme yapılmamış demektir.
+      return v === String(f.value ?? '').trim();
     }).length;
   }, [fields, values]);
 
@@ -68,6 +73,8 @@ export default function App() {
       if (elapsed < minShow) await new Promise((r) => setTimeout(r, minShow - elapsed));
       setDurationMs(Math.round(performance.now() - started));
       setData(json);
+      // Ham MRZ satırlarını düzenlenebilir başlangıç değeri olarak al.
+      setMrzLines(Array.isArray(json?.result?.raw_mrz) ? [...json.result.raw_mrz] : []);
       setPhase('done');
     } catch (e) {
       setError(e.message || 'Operation failed');
@@ -91,6 +98,7 @@ export default function App() {
       body.append('file', scanFile);
       body.append('model_output', JSON.stringify(data.result));
       body.append('corrected_fields', JSON.stringify(corrected));
+      body.append('corrected_mrz', JSON.stringify(mrzLines));
 
       const scanUrl = import.meta.env.VITE_API_URL || '/api/scan';
       const saveUrl = import.meta.env.VITE_SAVE_URL || scanUrl.replace(/\/scan$/, '/save');
@@ -115,6 +123,7 @@ export default function App() {
     setSaving(false);
     setSaveError('');
     setScanFile(null);
+    setMrzLines([]);
     setError('');
     setDurationMs(null);
     setFilename('');
@@ -194,6 +203,14 @@ export default function App() {
                 values={values}
                 onChange={(k, v) => {
                   setValues((p) => ({ ...p, [k]: v }));
+                  setSaved(false);
+                }}
+              />
+              <MrzEditor
+                lines={mrzLines}
+                mrzFormat={data.result?.document?.mrz_format}
+                onChange={(next) => {
+                  setMrzLines(next);
                   setSaved(false);
                 }}
               />

@@ -88,13 +88,79 @@ def _model_field_values(model_output: dict) -> dict[str, str]:
     }
 
 
-def _is_human_corrected(model_output: dict, corrected: dict) -> bool:
-    """True if any corrected field value differs from what the model produced."""
-    if not isinstance(corrected, dict):
-        return False
+def _is_human_corrected(
+    model_output: dict, corrected: dict, model_mrz: list, corrected_mrz: Optional[list]
+) -> bool:
+    """True if the human changed any field value OR the raw MRZ lines."""
+    if isinstance(corrected, dict):
+        model_vals = _model_field_values(model_output)
+        for key, val in corrected.items():
+            if str(val).strip() != str(model_vals.get(key, "")).strip():
+                return True
+    if corrected_mrz is not None:
+        norm = [str(x).strip() for x in corrected_mrz]
+        base = [str(x).strip() for x in (model_mrz or [])]
+        if norm != base:
+            return True
+    return False
+
+
+# Field reliability threshold below which a correction is MANDATORY.
+# Mirrors THRESHOLD in web/frontend/src/fields.js.
+_RELIABILITY_THRESHOLD = 0.75
+
+
+def _model_field_reliabilities(model_output: dict) -> dict[str, Optional[float]]:
+    """Per-field reliability from model_output. document_type has none (never
+    mandatory) — mirrors fields.js hasReliability=false for that key."""
+    if not isinstance(model_output, dict):
+        return {}
+    d = model_output.get("document") or {}
+    h = model_output.get("holder") or {}
+    dt = model_output.get("dates") or {}
+
+    def r(node) -> Optional[float]:
+        v = (node or {}).get("reliability")
+        return float(v) if isinstance(v, (int, float)) else None
+
+    return {
+        "document_number": r(d.get("number")),
+        "personal_number": r(d.get("personal_number")),
+        "nationality": r(h.get("nationality")),
+        "surname": r(h.get("surname")),
+        "given_names": r(h.get("given_names")),
+        "date_of_birth": r(dt.get("date_of_birth")),
+        "date_of_expiry": r(dt.get("date_of_expiry")),
+        "sex": r(h.get("sex")),
+    }
+
+
+def _is_present(v: Any) -> bool:
+    """Mirror of isPresent() in fields.js: non-empty after stripping '<' and spaces."""
+    return str(v if v is not None else "").replace("<", "").strip() != ""
+
+
+def _mandatory_unresolved(model_output: dict, corrected: dict) -> bool:
+    """Data-quality gate (Rule A), kept in lock-step with fields.js so the
+    frontend's Save-enabled state and this server-side check never disagree.
+
+    A field is mandatory when it's missing (!found) OR its reliability < 0.75
+    (isMandatory in fields.js). If a mandatory field is left empty or unchanged
+    from the model's value, the record must NOT be saved."""
+    rels = _model_field_reliabilities(model_output)
     model_vals = _model_field_values(model_output)
-    for key, val in corrected.items():
-        if str(val).strip() != str(model_vals.get(key, "")).strip():
+    corrected = corrected if isinstance(corrected, dict) else {}
+    for key, rel in rels.items():
+        model_val = model_vals.get(key, "")
+        found = _is_present(model_val)
+        # fields.js: reliability defaults to 0 when not found → mandatory.
+        effective_rel = rel if rel is not None else (1.0 if found else 0.0)
+        mandatory = (not found) or effective_rel < _RELIABILITY_THRESHOLD
+        if not mandatory:
+            continue
+        # The final value the user is submitting for this field.
+        final_val = str(corrected.get(key, model_val)).strip()
+        if final_val == "" or final_val == str(model_val).strip():
             return True
     return False
 
@@ -113,6 +179,7 @@ async def save(
     file: UploadFile = File(...),
     model_output: str = Form(...),
     corrected_fields: str = Form(...),
+    corrected_mrz: str = Form(None),
 ) -> dict:
     if not db.is_available():
         raise HTTPException(503, "Database not configured; record not saved")
@@ -129,11 +196,20 @@ async def save(
 
     model = _parse_json_field(model_output, "model_output")
     corrected = _parse_json_field(corrected_fields, "corrected_fields")
+    corrected_lines = _parse_json_field(corrected_mrz, "corrected_mrz")
+
+    # Rule A (data-quality gate): a low-reliability field that still needs a fix
+    # but was left unchanged must NOT be saved — keeps the dataset clean.
+    if _mandatory_unresolved(model or {}, corrected or {}):
+        raise HTTPException(
+            422, "Correction required for low-confidence fields; record not saved"
+        )
 
     quality = (model or {}).get("quality") or {}
     document = (model or {}).get("document") or {}
     reliability = quality.get("reliability_score")
     mrz_format = document.get("mrz_format")
+    model_mrz = (model or {}).get("raw_mrz") or []
 
     try:
         record_id = db.insert_record(
@@ -143,7 +219,10 @@ async def save(
             image_mime=file.content_type,
             model_output=model,
             corrected_fields=corrected,
-            human_corrected=_is_human_corrected(model or {}, corrected or {}),
+            corrected_mrz=corrected_lines,
+            human_corrected=_is_human_corrected(
+                model or {}, corrected or {}, model_mrz, corrected_lines
+            ),
             reliability_score=reliability,
             mrz_format=mrz_format,
         )

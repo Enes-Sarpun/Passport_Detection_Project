@@ -215,6 +215,26 @@
   padding: 2px 7px;
 }
 
+/* ---- Raw MRZ editor (active-learning gold label) ---- */
+.mrz-editor {
+  border: 1px solid var(--border); border-radius: 6px;
+  background: var(--surface); padding: 16px 20px;
+}
+.mrz-editor__head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.mrz-editor__head h3 { font-size: 14px; }
+.mrz-editor__note { font-size: 11px; color: var(--ink-muted); }
+.mrz-editor__row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.mrz-editor__row:last-child { margin-bottom: 0; }
+.mrz-editor__input {
+  flex: 1; letter-spacing: 1px; font-size: 13px;
+  padding: 8px 10px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg); color: var(--ink);
+}
+.mrz-editor__input:focus { outline: none; border-color: var(--accent); }
+.mrz-editor__input--off { border-color: var(--mandatory-ring); }
+.mrz-editor__len { font-size: 12px; color: var(--ink-muted); min-width: 44px; text-align: right; }
+.mrz-editor__len--off { color: var(--mandatory-ring); font-weight: 600; }
+
 /* ---- Save gate (§4) ---- */
 .savegate {
   display: flex; align-items: center; justify-content: space-between;

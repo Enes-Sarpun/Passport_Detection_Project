@@ -46,3 +46,6 @@ GroundTruth/eval_log.txt
 
 # ---- Active-learning dataset exports (türetilen, görseller içerir) ----
 export/
+# Active GT + kalibrasyon durumu: DB'den türetilir, versiyonlanmaz.
+GroundTruth/ground_truth_active.json
+GroundTruth/.calibration_state.json

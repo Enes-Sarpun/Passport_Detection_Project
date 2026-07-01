@@ -39,8 +39,36 @@ from Scripts.parsing.mrz_parse import parse_mrz, MRZResult, check_stop_words
 from Scripts.parsing.schema import _field_reliability
 
 _GT_PATH = _ROOT / "GroundTruth" / "ground_truth.json"
+_ACTIVE_GT_PATH = _ROOT / "GroundTruth" / "ground_truth_active.json"
 _IMG_DIR = _ROOT / "Images" / "MRZ_Data" / "Processed_data" / "images" / "test"
+_ACTIVE_IMG_DIR = _ROOT / "Images" / "MRZ_Data" / "Processed_data" / "images" / "active"
 _DATA_PATH = _ROOT / "GroundTruth" / "calibration_data.csv"
+
+
+def _load_ground_truth() -> dict:
+    """Load the golden GT plus, if present, the active-learning GT built by
+    merge_to_gt.py. Active stems are prefixed `al_` so their images resolve to
+    the active/ dir (see _img_path). The golden ground_truth.json is unchanged."""
+    with open(_GT_PATH, encoding="utf-8") as f:
+        gt = json.load(f)
+    if _ACTIVE_GT_PATH.exists():
+        with open(_ACTIVE_GT_PATH, encoding="utf-8") as f:
+            active = json.load(f)
+        added = 0
+        for stem, entry in active.items():
+            if stem.startswith("_"):
+                continue
+            gt[stem] = entry
+            added += 1
+        if added:
+            print(f"Merged {added} active-learning GT records (ground_truth_active.json)")
+    return gt
+
+
+def _img_path(stem: str):
+    """Active-learning stems (`al_*`) live in active/, the rest in test/."""
+    base = _ACTIVE_IMG_DIR if stem.startswith("al_") else _IMG_DIR
+    return base / f"{stem}.jpg"
 
 # Same field set the accuracy evaluation uses (issuing_country excluded).
 _FIELDS = [
@@ -131,13 +159,12 @@ def collect_signals(runs: int = 3) -> None:
     from Scripts.ocr.pipeline import _process_frame
     from Scripts.detection.detect import detect_mrz
 
-    with open(_GT_PATH, encoding="utf-8") as f:
-        gt = json.load(f)
+    gt = _load_ground_truth()
     stems = [k for k in gt if not k.startswith("_")]
 
     rows: list[dict] = []
     for idx, stem in enumerate(stems, 1):
-        img_path = _IMG_DIR / f"{stem}.jpg"
+        img_path = _img_path(stem)
         if not img_path.exists():
             continue
         image = cv2.imdecode(np.frombuffer(img_path.read_bytes(), dtype=np.uint8), cv2.IMREAD_COLOR)

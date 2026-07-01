@@ -28,12 +28,15 @@ CREATE TABLE IF NOT EXISTS scan_records (
     image_mime        TEXT,
     model_output      JSONB,
     corrected_fields  JSONB,
+    corrected_mrz     JSONB,
     human_corrected   BOOLEAN NOT NULL DEFAULT FALSE,
     reliability_score REAL,
     mrz_format        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_scan_records_sha256 ON scan_records (image_sha256);
 CREATE INDEX IF NOT EXISTS idx_scan_records_corrected ON scan_records (human_corrected);
+-- Migration for tables created before corrected_mrz existed (idempotent).
+ALTER TABLE scan_records ADD COLUMN IF NOT EXISTS corrected_mrz JSONB;
 """
 
 
@@ -79,6 +82,7 @@ def insert_record(
     image_mime: Optional[str],
     model_output: Any,
     corrected_fields: Any,
+    corrected_mrz: Any,
     human_corrected: bool,
     reliability_score: Optional[float],
     mrz_format: Optional[str],
@@ -95,10 +99,10 @@ def insert_record(
             """
             INSERT INTO scan_records (
                 filename, image, image_sha256, image_mime,
-                model_output, corrected_fields, human_corrected,
+                model_output, corrected_fields, corrected_mrz, human_corrected,
                 reliability_score, mrz_format
             )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING id
             """,
             (
@@ -108,6 +112,7 @@ def insert_record(
                 image_mime,
                 Json(model_output) if model_output is not None else None,
                 Json(corrected_fields) if corrected_fields is not None else None,
+                Json(corrected_mrz) if corrected_mrz is not None else None,
                 human_corrected,
                 reliability_score,
                 mrz_format,
