@@ -43,6 +43,7 @@ This project performs **automated data extraction** from images of passports and
 
 - 🎯 **YOLO-based MRZ detection** — locates the MRZ region on a passport/ID quickly and accurately.
 - 🔤 **Tesseract + OCR-B** — MRZ-specific OCR-B model; **0% character error rate** on synthetic MRZ.
+- ☁️ **Cloud OCR fallback** — when a Tesseract read is low-confidence, an independent cloud engine (Google Vision) re-reads the MRZ strip and the result that passes more check digits wins. Optional and disabled by default; enabled only if an API key is set.
 - 🧠 **ICAO 9303 MRZ parsing** — field extraction supporting the TD1 / TD2 / TD3 formats.
 - ✅ **Checksum validation** — field-accuracy checks against MRZ check digits, with automatic repair.
 - 🛠️ **Positional repair** — fixes OCR errors using class constraints (date→digit, country code→letter).
@@ -163,6 +164,20 @@ pip install -r requirements.txt
 # Download the MRZ-specific OCR-B model (ocrb.traineddata) — one time only
 python main_tess.py setup
 ```
+
+### Optional: cloud OCR fallback
+
+Set `GOOGLE_VISION_API_KEY` to enable the Google Cloud Vision fallback. When
+Tesseract's read is low-confidence, the pipeline re-reads the MRZ with Vision and
+keeps whichever result passes more check digits. Without the key the fallback is
+silently disabled and nothing changes.
+
+```bash
+export GOOGLE_VISION_API_KEY=...   # enables the fallback
+```
+
+> 🔒 **Privacy:** only the cropped MRZ strip (not the full passport image) is sent
+> to the cloud provider, and only for low-confidence reads.
 
 ---
 

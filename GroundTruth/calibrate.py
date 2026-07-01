@@ -174,7 +174,11 @@ def collect_signals(runs: int = 3) -> None:
         sig_acc: dict[str, list[float]] = {c: [] for c in _SIGNAL_COLS}
         correct_runs: list[int] = []
         for _ in range(runs):
-            out, detection, raw_signals = _process_frame(image, return_signals=True)
+            # Fallback OCR disabled: reliability is calibrated on pure-Tesseract
+            # signals, so the learned model matches what runs without a cloud key.
+            out, detection, raw_signals = _process_frame(
+                image, return_signals=True, use_fallback=False
+            )
             if out is None or detection is None or raw_signals is None:
                 # No MRZ / parse fail → all signals zero, definitely incorrect.
                 for c in _SIGNAL_COLS:

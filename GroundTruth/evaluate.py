@@ -126,8 +126,9 @@ def _load_image(path: Path) -> np.ndarray | None:
 
 
 def _pred_lines(image: np.ndarray) -> list[str]:
-    """Run the Tesseract pipeline and return the raw MRZ lines it produced."""
-    output, _ = _process_frame(image)
+    """Run the Tesseract pipeline and return the raw MRZ lines it produced.
+    Fallback OCR is disabled so ground-truth metrics stay pure-Tesseract."""
+    output, _ = _process_frame(image, use_fallback=False)
     if output is None:
         return []
     return output.get("raw_mrz", []) or []

@@ -177,11 +177,15 @@ def _run_ocr_passes(candidates: list[np.ndarray]) -> list[TesseractResult]:
     return results
 
 
+_FALLBACK_THRESHOLD = 0.75  # reliability below which the cloud OCR rescue runs
+
+
 def _process_frame(
     image: np.ndarray,
     weights: Optional[Path] = None,
     conf_threshold: float = 0.5,
     return_signals: bool = False,
+    use_fallback: bool = True,
 ):
 
     def _ret(out, det, signals=None):
@@ -248,7 +252,51 @@ def _process_frame(
         raw_mrz=chosen_lines,
         extra_warnings=pipeline_warnings,
     )
+
+    # Fallback OCR rescue: if Tesseract's read is low-confidence, ask an
+    # independent cloud engine to read the same MRZ strip and keep whichever
+    # result passes more ICAO check digits. Silent — output schema is unchanged.
+    if use_fallback and output["quality"]["reliability_score"] < _FALLBACK_THRESHOLD:
+        fb = _try_cloud_fallback(
+            image, detection, chosen_lines, best_cd, pipeline_warnings
+        )
+        if fb is not None:
+            output, signals = fb["output"], {**signals, **fb["signals"]}
+
     return _ret(output, detection, signals)
+
+
+def _try_cloud_fallback(image, detection, tess_lines, tess_cd, pipeline_warnings):
+    """Read the MRZ crop with the cloud OCR and, if it passes strictly more
+    check digits than Tesseract, return the rescued output. None otherwise.
+    Only the cropped MRZ strip is sent (never the full passport)."""
+    from Scripts.ocr import cloud_ocr
+    if not cloud_ocr.is_available():
+        return None
+
+    mrz_crop = crop(image, detection.box)
+    cloud_lines = cloud_ocr.read_mrz(mrz_crop)
+    if not cloud_lines:
+        return None
+
+    cloud_parsed = parse_mrz(cloud_lines)
+    if cloud_parsed is None:
+        return None
+
+    if _count_cd_passes(cloud_lines) <= tess_cd:
+        return None  # not strictly better → keep Tesseract
+
+    cloud_output = build_output(
+        cloud_parsed,
+        detection_confidence=detection.confidence,
+        ocr_confidence=1.0,  # cloud has no comparable per-char confidence
+        raw_mrz=cloud_lines,
+        extra_warnings=pipeline_warnings,
+    )
+    return {
+        "output": cloud_output,
+        "signals": {"ocr_confidence": 1.0},
+    }
 
 
 def process_image(
