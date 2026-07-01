@@ -59,20 +59,11 @@ export default function ScanConsole({ scanning, done, filename, durationMs }) {
         </div>
       </div>
 
-      {/* Free-tier latency notice — the model runs on a free server and the
-          first response can take 1-2 minutes. Animated marquee so it reads as
-          a live status, not an error. */}
+      {/* Free-tier latency notice — plain text on the light theme, gently
+          pulsing so it reads as a live status, not an error. */}
       <div className="scan-notice" role="status" aria-live="polite">
-        <div className="scan-notice__track">
-          <span className="scan-notice__text">
-            ⏳ The model runs on a free-tier server — the first response can take
-            1–2 minutes. Please wait, this is normal.
-          </span>
-          <span className="scan-notice__text" aria-hidden="true">
-            ⏳ The model runs on a free-tier server — the first response can take
-            1–2 minutes. Please wait, this is normal.
-          </span>
-        </div>
+        The model runs on a free-tier server — the first response can take
+        1–2 minutes. Please wait, this is normal.
       </div>
     </>
   );
