@@ -46,16 +46,34 @@ export default function ScanConsole({ scanning, done, filename, durationMs }) {
   }
 
   return (
-    <div className="scan-console" ref={logRef}>
-      {lines.map((l, idx) => (
-        <div key={idx} className="scan-console__line">
-          <span className="scan-console__prompt">›</span> {l}
+    <>
+      <div className="scan-console" ref={logRef}>
+        {lines.map((l, idx) => (
+          <div key={idx} className="scan-console__line">
+            <span className="scan-console__prompt">›</span> {l}
+          </div>
+        ))}
+        <div className="scan-console__line">
+          <span className="scan-console__prompt">›</span>
+          <span className="scan-console__caret" />
         </div>
-      ))}
-      <div className="scan-console__line">
-        <span className="scan-console__prompt">›</span>
-        <span className="scan-console__caret" />
       </div>
-    </div>
+
+      {/* Free-tier latency notice — the model runs on a free server and the
+          first response can take 1-2 minutes. Animated marquee so it reads as
+          a live status, not an error. */}
+      <div className="scan-notice" role="status" aria-live="polite">
+        <div className="scan-notice__track">
+          <span className="scan-notice__text">
+            ⏳ The model runs on a free-tier server — the first response can take
+            1–2 minutes. Please wait, this is normal.
+          </span>
+          <span className="scan-notice__text" aria-hidden="true">
+            ⏳ The model runs on a free-tier server — the first response can take
+            1–2 minutes. Please wait, this is normal.
+          </span>
+        </div>
+      </div>
+    </>
   );
 }

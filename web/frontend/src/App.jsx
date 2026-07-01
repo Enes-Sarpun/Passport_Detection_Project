@@ -13,6 +13,12 @@ import MrzEditor from './components/MrzEditor';
 import SaveGate from './components/SaveGate';
 import { extractFields } from './fields';
 
+// Decorative MRZ text for the side strips (passport-themed ambience only).
+const MRZ_DECOR = (
+  'P<UTOERIKSSON<<ANNA<<<<<<<<<<<<<<<<<<<<<<<<<<' +
+  'L898902C36UTO7408122F1204159ZE184226B<<<<<10'
+).split('').join('\n');
+
 export default function App() {
   const [phase, setPhase] = useState('idle'); // idle | scanning | done | error
   const [filename, setFilename] = useState('');
@@ -143,6 +149,14 @@ export default function App() {
         className="console-section"
         aria-label="MRZ Scan Console"
       >
+        {/* Dekoratif MRZ şeritleri — sol/sağ kenarda soluk dikey mono desen */}
+        <div className="mrz-strip mrz-strip--left" aria-hidden="true">
+          <div className="mrz-strip__scroll">{MRZ_DECOR}{MRZ_DECOR}</div>
+        </div>
+        <div className="mrz-strip mrz-strip--right" aria-hidden="true">
+          <div className="mrz-strip__scroll">{MRZ_DECOR}{MRZ_DECOR}</div>
+        </div>
+
         {/* Bölüm başlığı + eylem butonu */}
         <div className="console-header">
           <div className="console-header__brand">

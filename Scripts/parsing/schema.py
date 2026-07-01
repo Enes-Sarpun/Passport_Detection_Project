@@ -53,6 +53,7 @@ def _field_reliability(
     ocr_c: float,
     checkdigit_valid: Optional[bool],
     repaired: bool,
+    cross_confirmed: bool = False,
 ) -> float:
     """Per-field reliability ≈ P(this field's value is correct), grounded in data.
 
@@ -60,7 +61,10 @@ def _field_reliability(
     and modulates it by this document's live signals:
       - a FAILED check digit is strong evidence the read is wrong → heavy penalty;
       - an auto-repaired value is less certain than a clean pass → mild penalty;
-      - low OCR confidence drags the score down proportionally.
+      - low OCR confidence drags the score down proportionally;
+      - cross_confirmed: a second independent source agrees (e.g. nationality on
+        L2 matches the issuing country on L1) → the check-digit-less penalty is
+        recovered, since two independent reads agreeing is strong evidence.
     A passing check digit leaves the base intact (it is already the measured
     accuracy of check-digit-passing reads). The result is clamped to [0, 1].
     """
@@ -71,13 +75,19 @@ def _field_reliability(
         base *= 0.35           # check digit says the read is almost certainly wrong
     elif checkdigit_valid is True and repaired:
         base *= 0.90           # recovered via confusion repair — slightly less sure
-    elif checkdigit_valid is None and repaired:
+    elif checkdigit_valid is None and repaired and not cross_confirmed:
         base *= 0.90           # name/nationality repaired (no check digit to confirm)
 
     # OCR confidence modulation: scale toward the base as confidence rises.
     # At ocr_c=1.0 the base is untouched; lower confidence pulls it down.
     conf_factor = 0.7 + 0.3 * float(ocr_c)   # maps ocr_c∈[0,1] → [0.7, 1.0]
     score = base * conf_factor
+
+    # A field with no check digit (nationality) gains confidence when a second
+    # independent MRZ line confirms it. Nudge toward — but never past — certainty.
+    if cross_confirmed and checkdigit_valid is None:
+        score += (1.0 - score) * 0.5
+
     return round(max(0.0, min(1.0, score)), 2)
 
 
@@ -139,6 +149,19 @@ def build_output(
     ocr_c = float(ocr_confidence)
     det_c = float(detection_confidence)
 
+    # Cross-line confirmation for nationality: the issuing country (L1, pos 2-5)
+    # and the nationality (L2, pos 10-13) are usually identical, read from two
+    # independent MRZ lines. When both are valid, resolvable country codes AND
+    # they agree, that agreement is strong evidence the read is correct. They may
+    # legitimately differ (dual nationality, refugee docs), so a mismatch simply
+    # does not confirm — it never penalises or overwrites the L2 value.
+    nat_cross_confirmed = bool(
+        result.nationality
+        and result.issuing_country
+        and result.nationality == result.issuing_country
+        and resolve_country(result.nationality)["name"] != "Unknown"
+    )
+
     field_confs = {
         "document_number": _field_reliability(
             "document_number", ocr_c, checks.get("document_number_valid"),
@@ -153,7 +176,8 @@ def build_output(
             "personal_number", ocr_c, checks.get("personal_number_valid"),
             "personal_number" in repaired_set),
         "nationality": _field_reliability(
-            "nationality", ocr_c, None, "nationality" in repaired_set),
+            "nationality", ocr_c, None, "nationality" in repaired_set,
+            cross_confirmed=nat_cross_confirmed),
         "name": _field_reliability("name", ocr_c, None, "name" in repaired_set),
     }
 
