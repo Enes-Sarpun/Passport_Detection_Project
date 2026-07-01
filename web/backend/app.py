@@ -140,16 +140,20 @@ def _is_present(v: Any) -> bool:
     return str(v if v is not None else "").replace("<", "").strip() != ""
 
 
-def _mandatory_unresolved(model_output: dict, corrected: dict) -> bool:
+def _mandatory_unresolved(
+    model_output: dict, corrected: dict, confirmed: Optional[list] = None
+) -> bool:
     """Data-quality gate (Rule A), kept in lock-step with fields.js so the
     frontend's Save-enabled state and this server-side check never disagree.
 
     A field is mandatory when it's missing (!found) OR its reliability < 0.75
-    (isMandatory in fields.js). If a mandatory field is left empty or unchanged
-    from the model's value, the record must NOT be saved."""
+    (isMandatory in fields.js). A mandatory field is RESOLVED when it is filled
+    AND (the value was changed from the model's read OR the user confirmed the
+    model's value is correct). Otherwise the record must NOT be saved."""
     rels = _model_field_reliabilities(model_output)
     model_vals = _model_field_values(model_output)
     corrected = corrected if isinstance(corrected, dict) else {}
+    confirmed_set = set(confirmed) if isinstance(confirmed, (list, tuple)) else set()
     for key, rel in rels.items():
         model_val = model_vals.get(key, "")
         found = _is_present(model_val)
@@ -158,10 +162,13 @@ def _mandatory_unresolved(model_output: dict, corrected: dict) -> bool:
         mandatory = (not found) or effective_rel < _RELIABILITY_THRESHOLD
         if not mandatory:
             continue
-        # The final value the user is submitting for this field.
         final_val = str(corrected.get(key, model_val)).strip()
-        if final_val == "" or final_val == str(model_val).strip():
-            return True
+        if final_val == "":
+            return True                       # empty → unresolved
+        if key in confirmed_set:
+            continue                          # user confirmed the value is correct
+        if final_val == str(model_val).strip():
+            return True                       # unchanged & unconfirmed → unresolved
     return False
 
 
@@ -179,6 +186,7 @@ async def save(
     file: UploadFile = File(...),
     model_output: str = Form(...),
     corrected_fields: str = Form(...),
+    confirmed_fields: str = Form(None),
     corrected_mrz: str = Form(None),
 ) -> dict:
     if not db.is_available():
@@ -196,13 +204,14 @@ async def save(
 
     model = _parse_json_field(model_output, "model_output")
     corrected = _parse_json_field(corrected_fields, "corrected_fields")
+    confirmed = _parse_json_field(confirmed_fields, "confirmed_fields")
     corrected_lines = _parse_json_field(corrected_mrz, "corrected_mrz")
 
-    # Rule A (data-quality gate): a low-reliability field that still needs a fix
-    # but was left unchanged must NOT be saved — keeps the dataset clean.
-    if _mandatory_unresolved(model or {}, corrected or {}):
+    # Rule A (data-quality gate): a low-reliability field must be either corrected
+    # or explicitly confirmed correct; otherwise the record is not saved.
+    if _mandatory_unresolved(model or {}, corrected or {}, confirmed):
         raise HTTPException(
-            422, "Correction required for low-confidence fields; record not saved"
+            422, "Correction or confirmation required for low-confidence fields; record not saved"
         )
 
     quality = (model or {}).get("quality") or {}

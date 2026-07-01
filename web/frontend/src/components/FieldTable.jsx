@@ -24,7 +24,8 @@ function ScoreBar({ reliability, found }) {
   );
 }
 
-export default function FieldTable({ fields, values, onChange }) {
+export default function FieldTable({ fields, values, confirmed, onChange, onConfirm }) {
+  confirmed = confirmed || {};
   return (
     <section className="ftable">
       <div className="ftable__head">
@@ -43,6 +44,12 @@ export default function FieldTable({ fields, values, onChange }) {
         const badge = BADGE[f.status];
         const corrected = values[f.key] ?? f.value;
         const editable = true; // any field is editable (§7)
+        const isConfirmed = !!confirmed[f.key];
+        const cur = String(corrected ?? '').trim();
+        const changed = cur !== '' && cur !== String(f.value ?? '').trim();
+        // A mandatory field that is filled but unchanged can be confirmed as
+        // correct (the model may have read it right despite a low score).
+        const canConfirm = f.mandatory && f.found && !changed;
         return (
           <div className="ftable__row" key={f.key}>
             <span className="ftable__label label">{f.label}</span>
@@ -59,10 +66,23 @@ export default function FieldTable({ fields, values, onChange }) {
               ) : (
                 <span className="mono">{corrected}</span>
               )}
-              {f.mandatory && (
+              {f.mandatory && !f.found && (
                 <span className="field-hint field-hint--req">
-                  <Lock /> {f.found ? 'Required before saving' : 'Could not read this field — enter a value'}
+                  <Lock /> Could not read this field — enter a value
                 </span>
+              )}
+              {canConfirm && (
+                <label className={`field-confirm ${isConfirmed ? 'field-confirm--on' : ''}`}>
+                  <input
+                    type="checkbox"
+                    checked={isConfirmed}
+                    onChange={(e) => onConfirm?.(f.key, e.target.checked)}
+                  />
+                  {isConfirmed ? 'Confirmed correct' : 'Value is correct — confirm, or edit above'}
+                </label>
+              )}
+              {f.mandatory && f.found && changed && (
+                <span className="field-hint field-hint--opt">Edited</span>
               )}
               {!f.mandatory && f.status === 'review' && (
                 <span className="field-hint field-hint--opt">Optional — score above threshold</span>

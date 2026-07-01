@@ -13,11 +13,11 @@ import MrzEditor from './components/MrzEditor';
 import SaveGate from './components/SaveGate';
 import { extractFields } from './fields';
 
-// Decorative MRZ text for the side strips (passport-themed ambience only).
-const MRZ_DECOR = (
-  'P<UTOERIKSSON<<ANNA<<<<<<<<<<<<<<<<<<<<<<<<<<' +
-  'L898902C36UTO7408122F1204159ZE184226B<<<<<10'
-).split('').join('\n');
+// Two MRZ lines for the side strips — each rendered as a vertical column of
+// characters, the two columns side by side (passport-themed ambience only).
+const MRZ_DECOR_L1 = 'P<UTOERIKSSON<<ANNA<<<<<<<<<<<<<<<<<<<<<<<<<<';
+const MRZ_DECOR_L2 = 'L898902C36UTO7408122F1204159ZE184226B<<<<<10';
+const toColumn = (s) => s.split('').join('\n');
 
 export default function App() {
   const [phase, setPhase] = useState('idle'); // idle | scanning | done | error
@@ -25,6 +25,7 @@ export default function App() {
   const [durationMs, setDurationMs] = useState(null);
   const [data, setData] = useState(null);       // { result, preview }
   const [values, setValues] = useState({});     // kullanıcı düzeltmeleri
+  const [confirmed, setConfirmed] = useState({}); // "model doğru" onayı (key→true)
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);  // /api/save isteği sürüyor
   const [saveError, setSaveError] = useState('');
@@ -38,17 +39,19 @@ export default function App() {
     [data]
   );
 
-  // Kural A: zorunlu (mandatory) bir alan BOŞ ise VEYA model değeriyle AYNI
-  // (düzeltilmemiş) ise "çözülmemiş" say — düzeltilmeden kaydedilemez.
+  // Kural A: zorunlu (mandatory) bir alan "çözülmüş" sayılır eğer dolu VE
+  // (değeri düzeltildi VEYA kullanıcı "model doğru" diye onayladı). Model doğru
+  // okumuş olabilir; o zaman kullanıcı aynı değeri değiştirmek zorunda kalmadan
+  // onaylayarak kaydı açar.
   const unresolved = useMemo(() => {
     return fields.filter((f) => {
       if (!f.mandatory) return false;
       const v = (values[f.key] ?? f.value ?? '').trim();
-      if (v === '') return true;
-      // Kullanıcı değeri model çıktısıyla aynıysa düzeltme yapılmamış demektir.
-      return v === String(f.value ?? '').trim();
+      if (v === '') return true;                         // boş → çözülmemiş
+      if (confirmed[f.key]) return false;                // onaylandı → çözülmüş
+      return v === String(f.value ?? '').trim();         // değişmediyse çözülmemiş
     }).length;
-  }, [fields, values]);
+  }, [fields, values, confirmed]);
 
   // Hero CTA → konsol bölümüne animasyonlu (smooth) kaydır.
   function scrollToConsole() {
@@ -100,10 +103,14 @@ export default function App() {
       for (const f of fields) {
         corrected[f.key] = (values[f.key] ?? f.value ?? '').trim();
       }
+      // Onaylanan (model doğru kabul edilen) alan anahtarları.
+      const confirmedKeys = Object.keys(confirmed).filter((k) => confirmed[k]);
+
       const body = new FormData();
       body.append('file', scanFile);
       body.append('model_output', JSON.stringify(data.result));
       body.append('corrected_fields', JSON.stringify(corrected));
+      body.append('confirmed_fields', JSON.stringify(confirmedKeys));
       body.append('corrected_mrz', JSON.stringify(mrzLines));
 
       const scanUrl = import.meta.env.VITE_API_URL || '/api/scan';
@@ -125,6 +132,7 @@ export default function App() {
     setPhase('idle');
     setData(null);
     setValues({});
+    setConfirmed({});
     setSaved(false);
     setSaving(false);
     setSaveError('');
@@ -149,12 +157,18 @@ export default function App() {
         className="console-section"
         aria-label="MRZ Scan Console"
       >
-        {/* Dekoratif MRZ şeritleri — sol/sağ kenarda soluk dikey mono desen */}
+        {/* Dekoratif MRZ şeritleri — sol/sağ kenarda iki dikey mono satır */}
         <div className="mrz-strip mrz-strip--left" aria-hidden="true">
-          <div className="mrz-strip__scroll">{MRZ_DECOR}{MRZ_DECOR}</div>
+          <div className="mrz-strip__scroll">
+            <span className="mrz-strip__col">{toColumn(MRZ_DECOR_L1 + MRZ_DECOR_L1)}</span>
+            <span className="mrz-strip__col">{toColumn(MRZ_DECOR_L2 + MRZ_DECOR_L2)}</span>
+          </div>
         </div>
         <div className="mrz-strip mrz-strip--right" aria-hidden="true">
-          <div className="mrz-strip__scroll">{MRZ_DECOR}{MRZ_DECOR}</div>
+          <div className="mrz-strip__scroll">
+            <span className="mrz-strip__col">{toColumn(MRZ_DECOR_L1 + MRZ_DECOR_L1)}</span>
+            <span className="mrz-strip__col">{toColumn(MRZ_DECOR_L2 + MRZ_DECOR_L2)}</span>
+          </div>
         </div>
 
         {/* Bölüm başlığı + eylem butonu */}
@@ -215,8 +229,15 @@ export default function App() {
               <FieldTable
                 fields={fields}
                 values={values}
+                confirmed={confirmed}
                 onChange={(k, v) => {
                   setValues((p) => ({ ...p, [k]: v }));
+                  // Değeri elle değiştiren kullanıcı "model doğru" onayını geçersiz kılar.
+                  setConfirmed((p) => (p[k] ? { ...p, [k]: false } : p));
+                  setSaved(false);
+                }}
+                onConfirm={(k, ok) => {
+                  setConfirmed((p) => ({ ...p, [k]: ok }));
                   setSaved(false);
                 }}
               />

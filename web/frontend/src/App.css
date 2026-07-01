@@ -21,29 +21,35 @@
   overflow: hidden; /* şeritlerin taşmasını kırp */
 }
 
-/* Dekoratif MRZ şeritleri — kenarlarda soluk, yavaşça kayan dikey mono karakter */
+/* Dekoratif MRZ şeritleri — kenarlarda iki dikey mono satır, yavaşça kayan */
 .mrz-strip {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 40px;
+  width: 58px;
   overflow: hidden;
   pointer-events: none;
   z-index: 0;
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.35;
-  text-align: center;
-  color: var(--ink);
-  opacity: 0.05;
+  opacity: 0.16;
   -webkit-mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
   mask-image: linear-gradient(to bottom, transparent, #000 12%, #000 88%, transparent);
 }
 .mrz-strip--left { left: 0; }
 .mrz-strip--right { right: 0; }
 .mrz-strip__scroll {
-  white-space: pre;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
   animation: mrz-strip-scroll 60s linear infinite;
+}
+.mrz-strip__col {
+  white-space: pre;
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.3;
+  letter-spacing: 0;
+  text-align: center;
+  color: var(--ink);
 }
 .mrz-strip--right .mrz-strip__scroll { animation-direction: reverse; }
 @keyframes mrz-strip-scroll {
@@ -53,7 +59,7 @@
 /* Konsol içeriği şeritlerin üstünde kalsın */
 .console-header, .console-body { position: relative; z-index: 1; }
 /* Dar ekranda gizle (içerikle çakışmasın) + hareket azaltma */
-@media (max-width: 1200px) { .mrz-strip { display: none; } }
+@media (max-width: 1040px) { .mrz-strip { display: none; } }
 @media (prefers-reduced-motion: reduce) { .mrz-strip__scroll { animation: none; } }
 
 .console-header {
@@ -239,6 +245,14 @@
 .field-hint { font-size: 11px; display: inline-flex; align-items: center; gap: 4px; }
 .field-hint--req { color: var(--mandatory-ring); }
 .field-hint--opt { color: var(--ink-muted); }
+
+/* Confirm-correct control for a low-confidence field the model read right */
+.field-confirm {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--mandatory-ring); cursor: pointer;
+}
+.field-confirm input { cursor: pointer; margin: 0; accent-color: var(--score-high); }
+.field-confirm--on { color: var(--score-high); font-weight: 600; }
 
 /* inline correction inputs — ring weight conveys mandatory vs optional (§4/§7) */
 .field-input {
