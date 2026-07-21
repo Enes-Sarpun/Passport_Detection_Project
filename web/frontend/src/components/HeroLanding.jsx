@@ -1,24 +1,22 @@
-// HeroLanding — Pasaport OCR-YOLO için dark dramatic giriş ekranı.
-// 3 CloudFront video (blob preloading + crossfade) + CSS fallback katmanları.
-// "taramaya başla" → props.onStart() → #console-section'a smooth scroll.
+// Dark full-screen landing hero: three background videos (blob-preloaded,
+// crossfaded) with CSS fallback layers. The CTA calls props.onStart().
 import { useCallback, useEffect, useRef, useState } from 'react';
 import './Hero.css';
 
-// 3 CloudFront video URL'i (orijinal prompt'tan)
 const VIDEO_URLS = [
   'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260629_030107_874273ea-684a-4e90-bb96-8fdfde48d53d.mp4',
   'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260629_032424_3c9c2a9d-807b-4482-80e6-dd6d9dfd4545.mp4',
   'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260627_094019_4214ea73-b963-46a4-8327-61489192de99.mp4',
 ];
 
-// 3 themes — correspond to the video/css layers
+// Themes, matching the video/CSS layers.
 const SLIDES = [
   { id: 0, tag: '01', label: 'THEME 1' },
   { id: 1, tag: '02', label: 'THEME 2' },
   { id: 2, tag: '03', label: 'THEME 3' },
 ];
 
-// Real project figures calibrated from ground-truth
+// Figures measured on the ground-truth set.
 const TRUST_POINTS = [
   { k: 'Character Accuracy', v: '98.3%' },
   { k: 'Field Accuracy',     v: '96.9%' },
@@ -26,7 +24,6 @@ const TRUST_POINTS = [
   { k: 'Error Recall',       v: '100%'  },
 ];
 
-// Only the 2 working nav links
 const NAV_LINKS = [
   { idx: '01', label: 'Overview', target: 'top'     },
   { idx: '02', label: 'Console',  target: 'console' },
@@ -39,7 +36,7 @@ const MRZ_TEXT = [
 ].join('   ·   ');
 const MRZ_WATERMARK = `${MRZ_TEXT}   ${MRZ_TEXT}   ${MRZ_TEXT}`;
 
-// IntersectionObserver reveal hook'u
+// Reveal-on-scroll hook.
 function useReveal(threshold = 0.15) {
   const ref = useRef(null);
   const [shown, setShown] = useState(false);
@@ -56,7 +53,6 @@ function useReveal(threshold = 0.15) {
   return [ref, shown];
 }
 
-// Canlı saat: "TUR HH:MM:SS"
 function Clock() {
   const [now, setNow] = useState('');
   useEffect(() => {
@@ -71,7 +67,7 @@ function Clock() {
   return <span className="hero-clock mono">TUR {now}</span>;
 }
 
-// Videoları blob olarak arka planda yükle
+// Preload the videos as blobs in the background.
 function usePreloadedVideos(urls) {
   const [srcMap, setSrcMap] = useState({}); // index → objectURL | original URL
   useEffect(() => {
@@ -88,7 +84,7 @@ function usePreloadedVideos(urls) {
           setSrcMap((prev) => ({ ...prev, [i]: objUrl }));
         })
         .catch(() => {
-          // Erişilemezse orijinal URL'i kullan — CORS/auth sorununda CSS fallback devreye girer
+          // Unreachable → fall back to the original URL; CSS layers cover CORS failures.
           setSrcMap((prev) => ({ ...prev, [i]: url }));
         });
     });
@@ -105,7 +101,6 @@ export default function HeroLanding({ onStart }) {
   const videoRefs = useRef([]);
   const srcMap = usePreloadedVideos(VIDEO_URLS);
 
-  // Video elemanlarına src ata ve oynat
   useEffect(() => {
     videoRefs.current.forEach((el, i) => {
       if (!el || !srcMap[i]) return;
@@ -113,11 +108,11 @@ export default function HeroLanding({ onStart }) {
         el.src = srcMap[i];
         el.load();
       }
-      el.play().catch(() => { /* autoplay policy — muted olduğu için çalışmalı */ });
+      el.play().catch(() => { /* autoplay is allowed because the videos are muted */ });
     });
   }, [srcMap]);
 
-  // Aktif tema değişince o videoyu baştan oynat
+  // Restart the video when the active theme changes.
   useEffect(() => {
     const el = videoRefs.current[active];
     if (!el || !srcMap[active]) return;
@@ -125,7 +120,6 @@ export default function HeroLanding({ onStart }) {
     el.play().catch(() => {});
   }, [active, srcMap]);
 
-  // Nav link tıklamaları
   const handleNavClick = useCallback((e, target) => {
     e.preventDefault();
     if (target === 'console') {
@@ -141,26 +135,23 @@ export default function HeroLanding({ onStart }) {
     setMenuOpen(false);
   }, []);
 
-  // Video bitti → sonraki temaya geç (0→1→2→0)
+  // Advance to the next theme when a video ends.
   const handleVideoEnd = useCallback((i) => {
     setActive((prev) => {
-      // Yalnızca aktif video tetiklemeli
+      // Only the active video may trigger the change.
       if (prev !== i) return prev;
       return (prev + 1) % VIDEO_URLS.length;
     });
   }, []);
 
-  // onStart → App'in scrollToConsole'u animasyonlu kaydırmayı yapar (tek kaynak;
-  // burada ayrıca scroll yapmak çift kaymaya yol açıyordu).
+  // App's scrollToConsole owns the scroll; doing it here too caused a double scroll.
   const handleStart = useCallback(() => {
     if (onStart) onStart();
   }, [onStart]);
 
   return (
     <div className="hero" data-accent="green">
-      {/* ── ARKA PLAN ── */}
       <div className="hero-bg" aria-hidden="true">
-        {/* Video katmanları */}
         {VIDEO_URLS.map((_, i) => (
           <video
             key={i}
@@ -169,18 +160,17 @@ export default function HeroLanding({ onStart }) {
             muted
             autoPlay
             playsInline
-            // loop kaldırıldı — video bitince onEnded tetiklensin
+            // No loop, so onEnded fires and advances the theme.
             onEnded={() => handleVideoEnd(i)}
             aria-hidden="true"
           />
         ))}
 
-        {/* CSS fallback katmanları (video yüklenemezse görünür) */}
+        {/* CSS fallback layers, shown until a video's blob is ready */}
         {SLIDES.map((s) => (
           <div
             key={s.id}
             className={`hero-bg__layer hero-bg__layer--${s.id} ${
-              // Yalnızca o videonun src'si henüz gelmemişse göster
               !srcMap[s.id] && active === s.id ? 'is-active' : ''
             }`}
           />
@@ -190,7 +180,6 @@ export default function HeroLanding({ onStart }) {
         <div className="hero-bg__mrz mono" aria-hidden="true">{MRZ_WATERMARK}</div>
       </div>
 
-      {/* ── NAVBAR ── */}
       <header className="hero-nav" role="banner">
         <nav className="hero-nav__left" aria-label="Main navigation">
           {NAV_LINKS.map(({ idx, label, target }) => (
@@ -237,7 +226,6 @@ export default function HeroLanding({ onStart }) {
         </div>
       </header>
 
-      {/* ── ANA İÇERİK ── */}
       <main className="hero-main" ref={revealRef}>
         {/* Top: layer selector + ready status */}
         <section className="hero-upper" aria-label="Module selector">
@@ -299,13 +287,11 @@ export default function HeroLanding({ onStart }) {
         </section>
       </main>
 
-      {/* Aşağı kaydır işareti */}
       <div className="hero-scroll-hint" aria-hidden="true" onClick={handleStart}>
         <span className="hero-scroll-hint__line" />
         <span className="hero-scroll-hint__text">scroll</span>
       </div>
 
-      {/* Hero-konsol geçiş blur fade */}
       <div className="hero-bottom-fade" aria-hidden="true" />
     </div>
   );

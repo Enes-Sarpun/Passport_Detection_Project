@@ -24,7 +24,6 @@ app = FastAPI(title="Passport Detection Trust Console", version="1.0")
 
 @app.on_event("startup")
 def _startup() -> None:
-    # Create the scan_records table if a database is configured; no-op otherwise.
     try:
         db.init_schema()
     except Exception:  # pragma: no cover - never block startup on DB issues

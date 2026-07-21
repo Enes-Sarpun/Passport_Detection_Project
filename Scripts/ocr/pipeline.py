@@ -67,11 +67,9 @@ def _mrz_likeness(text: str, line_len: int) -> float:
     if not stripped:
         return 0.0
 
-    # Fill ratio: how much of the (rstripped) content is real, non-filler chars.
     content = stripped.replace("<", "")
     fill_ratio = len(content) / max(len(stripped), 1)
 
-    # Length proximity to the expected line length.
     length_score = 1.0 - abs(len(stripped) - line_len) / line_len
     length_score = max(0.0, length_score)
 
@@ -82,15 +80,14 @@ def _l1_structure_score(text: str) -> float:
     norm = _normalize(text)
     if len(norm) < 5:
         return 0.0
+    # Scores how much a line looks like an ICAO name line: valid country code at
+    # the canonical position, a surname/given-names separator, and no digits.
     score = 0.0
-    # Valid 3-letter country code at the canonical position.
     code = norm[2:5]
     if code.isalpha() and resolve_country(code)["name"] != "Unknown":
         score += 0.5
-    # Surname/given-names separator present in the name field.
     if "<<" in norm[5:]:
         score += 0.3
-    # Name lines are essentially digit-free.
     if sum(1 for c in norm if c.isdigit()) <= 1:
         score += 0.2
     return score

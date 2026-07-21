@@ -1,21 +1,3 @@
-"""Fallback OCR via a cloud vision API (default: Google Cloud Vision).
-
-Used only as a rescue path: when Tesseract produces a low-confidence read
-(reliability_score < threshold), the pipeline asks a second, independent engine
-to read the same MRZ strip and keeps whichever result passes more check digits.
-
-Design:
-  * Provider-agnostic: `read_mrz()` dispatches to a concrete provider chosen by
-    env. Today only Google Vision; Azure can slot in behind the same signature.
-  * Fully graceful: if no API key is configured, `is_available()` is False and
-    the pipeline simply never calls the fallback (same as DATABASE_URL pattern).
-  * Never raises: any network/parse error returns None so a failed fallback can
-    never break a scan.
-  * Privacy: callers pass ONLY the cropped MRZ strip, not the full passport.
-
-Config:
-    GOOGLE_VISION_API_KEY   API key for Google Cloud Vision (images:annotate).
-"""
 from __future__ import annotations
 import base64
 import os

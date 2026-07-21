@@ -1,7 +1,5 @@
 // Passport Detection — Trust Console.
-// Single-page scroll layout: Hero (tam ekran, üst) → aşağı kaydır → Konsol bölümü.
-// "taramaya başla" → #console-section'a smooth scroll.
-// Faz geçişleri artık sadece konsol bölümü içinde (upload → scan → done).
+// Single-page layout: full-screen hero, then the console section (upload → scan → done).
 import { useMemo, useRef, useState } from 'react';
 import './App.css';
 import HeroLanding from './components/HeroLanding';
@@ -24,13 +22,13 @@ export default function App() {
   const [filename, setFilename] = useState('');
   const [durationMs, setDurationMs] = useState(null);
   const [data, setData] = useState(null);       // { result, preview }
-  const [values, setValues] = useState({});     // kullanıcı düzeltmeleri
-  const [confirmed, setConfirmed] = useState({}); // "model doğru" onayı (key→true)
+  const [values, setValues] = useState({});     // user edits
+  const [confirmed, setConfirmed] = useState({}); // per-field "value is correct" flags
   const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);  // /api/save isteği sürüyor
+  const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
-  const [scanFile, setScanFile] = useState(null); // save'de yeniden gönderilecek dosya
-  const [mrzLines, setMrzLines] = useState([]);   // düzenlenebilir ham MRZ satırları
+  const [scanFile, setScanFile] = useState(null); // re-sent on save
+  const [mrzLines, setMrzLines] = useState([]);   // editable raw MRZ lines
   const [error, setError] = useState('');
   const consoleSectionRef = useRef(null);
 
@@ -39,21 +37,19 @@ export default function App() {
     [data]
   );
 
-  // Kural A: zorunlu (mandatory) bir alan "çözülmüş" sayılır eğer dolu VE
-  // (değeri düzeltildi VEYA kullanıcı "model doğru" diye onayladı). Model doğru
-  // okumuş olabilir; o zaman kullanıcı aynı değeri değiştirmek zorunda kalmadan
-  // onaylayarak kaydı açar.
+  // A mandatory field counts as resolved when it is filled AND (its value was
+  // edited OR the user confirmed the model's read is correct). Without the
+  // confirm path, a correctly-read low-score field could never be saved.
   const unresolved = useMemo(() => {
     return fields.filter((f) => {
       if (!f.mandatory) return false;
       const v = (values[f.key] ?? f.value ?? '').trim();
-      if (v === '') return true;                         // boş → çözülmemiş
-      if (confirmed[f.key]) return false;                // onaylandı → çözülmüş
-      return v === String(f.value ?? '').trim();         // değişmediyse çözülmemiş
+      if (v === '') return true;                  // empty → unresolved
+      if (confirmed[f.key]) return false;         // confirmed → resolved
+      return v === String(f.value ?? '').trim();  // unchanged → unresolved
     }).length;
   }, [fields, values, confirmed]);
 
-  // Hero CTA → konsol bölümüne animasyonlu (smooth) kaydır.
   function scrollToConsole() {
     consoleSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   }
@@ -82,7 +78,6 @@ export default function App() {
       if (elapsed < minShow) await new Promise((r) => setTimeout(r, minShow - elapsed));
       setDurationMs(Math.round(performance.now() - started));
       setData(json);
-      // Ham MRZ satırlarını düzenlenebilir başlangıç değeri olarak al.
       setMrzLines(Array.isArray(json?.result?.raw_mrz) ? [...json.result.raw_mrz] : []);
       setPhase('done');
     } catch (e) {
@@ -91,19 +86,18 @@ export default function App() {
     }
   }
 
-  // "Verify and Save" → görseli + model çıktısını + son alan değerlerini
-  // /api/save'e gönderir. Görsel backend'e yeniden yüklenir (stateless).
+  // Sends the image, the model output and the final field values to /api/save.
+  // The image is re-uploaded because the backend is stateless.
   async function handleSave() {
     if (!data?.result || !scanFile || saving) return;
     setSaving(true);
     setSaveError('');
     try {
-      // Her alanın son değeri: kullanıcı düzeltmesi varsa o, yoksa model değeri.
+      // Final value per field: the user's edit if present, otherwise the model's.
       const corrected = {};
       for (const f of fields) {
         corrected[f.key] = (values[f.key] ?? f.value ?? '').trim();
       }
-      // Onaylanan (model doğru kabul edilen) alan anahtarları.
       const confirmedKeys = Object.keys(confirmed).filter((k) => confirmed[k]);
 
       const body = new FormData();
@@ -147,17 +141,15 @@ export default function App() {
 
   return (
     <div className="app-root">
-      {/* ── HERO — tam ekran, sayfa başı ── */}
       <HeroLanding onStart={scrollToConsole} />
 
-      {/* ── KONSOL BÖLÜMİ — kaydırınca görünür ── */}
       <section
         id="console-section"
         ref={consoleSectionRef}
         className="console-section"
         aria-label="MRZ Scan Console"
       >
-        {/* Dekoratif MRZ şeritleri — sol/sağ kenarda iki dikey mono satır */}
+        {/* Decorative MRZ strips on the left/right edges */}
         <div className="mrz-strip mrz-strip--left" aria-hidden="true">
           <div className="mrz-strip__scroll">
             <span className="mrz-strip__col">{toColumn(MRZ_DECOR_L1 + MRZ_DECOR_L1)}</span>
@@ -171,7 +163,6 @@ export default function App() {
           </div>
         </div>
 
-        {/* Bölüm başlığı + eylem butonu */}
         <div className="console-header">
           <div className="console-header__brand">
             <span className="topbar__mark" />
@@ -186,10 +177,8 @@ export default function App() {
         </div>
 
         <div className="console-body">
-          {/* Adım 1 — Yükle */}
           {phase === 'idle' && <UploadZone onFile={handleFile} />}
 
-          {/* Adım 2 — Tarama konsolu */}
           {(phase === 'scanning' || phase === 'done') && (
             <ScanConsole
               scanning={phase === 'scanning'}
@@ -217,7 +206,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Adımlar 3–6 — Sonuçlar */}
           {phase === 'done' && !noMrz && (
             <>
               {data.preview && (
@@ -232,7 +220,7 @@ export default function App() {
                 confirmed={confirmed}
                 onChange={(k, v) => {
                   setValues((p) => ({ ...p, [k]: v }));
-                  // Değeri elle değiştiren kullanıcı "model doğru" onayını geçersiz kılar.
+                  // Editing a value invalidates a previous "correct" confirmation.
                   setConfirmed((p) => (p[k] ? { ...p, [k]: false } : p));
                   setSaved(false);
                 }}

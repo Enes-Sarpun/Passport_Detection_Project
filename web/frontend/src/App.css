@@ -2,7 +2,7 @@
    Paper-white data-dense canvas, one dark scan slab, blue for actions only,
    reliability color only in badges/bars, literal 0.75 threshold lines. */
 
-/* ---- Single-page root — serbest scroll (snap animasyonu kaldırıldı) ---- */
+/* ---- Single-page root ---- */
 .app-root {
   height: 100vh;
   overflow-y: scroll;
@@ -12,16 +12,16 @@
   scrollbar-color: rgba(34,197,94,0.3) transparent;
 }
 
-/* ---- Konsol bölümü (scroll ile ulaşılan) ---- */
+/* ---- Console section ---- */
 .console-section {
   background: var(--bg);
   min-height: 100vh;
   border-top: 1px solid rgba(34, 197, 94, 0.12);
   position: relative;
-  overflow: hidden; /* şeritlerin taşmasını kırp */
+  overflow: hidden;
 }
 
-/* Dekoratif MRZ şeritleri — kenarlarda iki dikey mono satır, yavaşça kayan */
+/* Decorative MRZ strips: two slowly scrolling vertical mono columns per edge */
 .mrz-strip {
   position: absolute;
   top: 0;
@@ -56,9 +56,9 @@
   from { transform: translateY(0); }
   to   { transform: translateY(-50%); }
 }
-/* Konsol içeriği şeritlerin üstünde kalsın */
+/* Keep console content above the strips */
 .console-header, .console-body { position: relative; z-index: 1; }
-/* Dar ekranda gizle (içerikle çakışmasın) + hareket azaltma */
+/* Hidden on narrow screens so they never overlap content */
 @media (max-width: 1040px) { .mrz-strip { display: none; } }
 @media (prefers-reduced-motion: reduce) { .mrz-strip__scroll { animation: none; } }
 
@@ -74,11 +74,11 @@
   gap: 16px;
 }
 
-/* Brand + label arasına boşluk */
+
 .console-header__brand {
   display: flex;
   align-items: baseline;
-  gap: 14px;  /* — Passport OCR-YOLO ile Trust Console arası */
+  gap: 14px;
 }
 
 .console-body {
@@ -92,7 +92,7 @@
   padding-bottom: 80px;
 }
 
-/* ---- Shell & layout (§5) — eski .console sınıfı yerine artık .console-body ---- */
+/* ---- Shell & layout (§5) ---- */
 .console {
   max-width: 1120px;
   margin: 0 auto;

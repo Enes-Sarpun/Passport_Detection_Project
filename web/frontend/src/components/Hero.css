@@ -1,7 +1,7 @@
 /* ================================================================
    Hero Landing — Passport OCR-YOLO
-   Dark dramatic welcome: siyah canvas, #22C55E yeşil accent,
-   dev büyük başlık, crossfade video/katman arka plan, reveal animasyonları.
+   Dark welcome screen: black canvas, #22C55E accent, oversized title,
+   crossfaded video/layer background, reveal animations.
    ================================================================ */
 
 :root {
@@ -26,7 +26,7 @@
 }
 
 /* ================================================================
-   VIDEO / KATMAN ARKA PLAN
+   VIDEO / LAYER BACKGROUND
    ================================================================ */
 .hero-bg {
   position: absolute;
@@ -45,7 +45,7 @@
 }
 .hero-bg__video.is-active { opacity: 1; }
 
-/* CSS-only fallback katmanları (video yüklenemezse) */
+/* CSS-only fallback layers, used until a video loads */
 .hero-bg__layer {
   position: absolute;
   inset: 0;
@@ -75,7 +75,7 @@
     #030803;
 }
 
-/* Overlay — video üzerinde metin okunabilirliği için */
+/* Overlay: keeps text readable over the video */
 .hero-bg__overlay {
   position: absolute;
   inset: 0;
@@ -83,7 +83,7 @@
   z-index: 1;
 }
 
-/* Base katman — her zaman görünür (video yüklenmeden önce de) */
+/* Base layer, always visible */
 .hero-bg__base {
   position: absolute;
   inset: 0;
@@ -269,7 +269,7 @@
   width: 100%;
   max-width: 1340px;
   margin: 0 auto;
-  /* padding-bottom: içeriği blur fade'in üzerine taşır */
+
   padding: 160px 15px 110px;
   box-sizing: border-box;
 }
@@ -346,12 +346,11 @@
   display: flex;
   align-items: center;
   gap: 0;
-  padding-bottom: 0; /* artık hero-main padding-bottom yönetiyor */
+  padding-bottom: 0;
 }
 
 .hero-name {
   flex: 2;
-  /* 2 satırlık 'Passport Detection.' için daha küçük font */
   font-size: clamp(44px, 6.5vw, 96px);
   line-height: 92%;
   letter-spacing: -3px;
@@ -569,13 +568,13 @@
   bottom: 0;
   left: 0;
   right: 0;
-  height: 72px; /* çok daha kısa, sadece geçiş hattı */
+  height: 72px;
   background: linear-gradient(
     to bottom,
     transparent 0%,
     rgba(248, 248, 248, 0.88) 100%
   );
-  /* backdrop-filter kaldırıldı — scroll sırasında GPU yükleniyor */
+  /* No backdrop-filter: it costs GPU time while scrolling. */
   z-index: 5;
   pointer-events: none;
 }

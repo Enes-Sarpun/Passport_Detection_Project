@@ -31,14 +31,10 @@ def _resolve_tessdata_dir() -> Path:
     return Path(r"C:\tessdata_ocrb")
 
 
-# Tesseract binary path (resolved per platform).
 _TESSERACT_CMD = _resolve_tesseract_cmd()
-
-# OCR-B tessdata — set via TESSDATA_PREFIX env variable.
 _TESSDATA_DIR = _resolve_tessdata_dir()
 
 _MRZ_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
-_MRZ_LENGTHS = (30, 36, 44)
 _MIN_STRIP_H = 80
 
 _JUNK_MAP = str.maketrans(

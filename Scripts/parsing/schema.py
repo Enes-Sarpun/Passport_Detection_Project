@@ -8,7 +8,6 @@ from .schema_helpers import _DOC_TYPE_MAP, _SEX_MAP
 
 SCHEMA_VERSION = "5"
 
-# Internal thresholds
 _LOW_OCR_CONF = 0.60
 _LOW_DETECT_CONF = 0.50
 # Rescan / manual-review threshold, chosen from the calibration data: at 0.75 the
@@ -20,8 +19,6 @@ _FIELD_CONF_THRESHOLD = 0.85
 _DOB_AGE_MIN = 5
 _DOB_AGE_MAX = 100
 
-
-# Small helpers
 
 def _document_type_description(doc_type: str) -> str:
     return _DOC_TYPE_MAP.get(doc_type, "Unknown")
@@ -133,8 +130,6 @@ def _reliability_score(
     return round(max(0.0, min(1.0, prob)), 2)
 
 
-# Main builder
-
 def build_output(
     result: MRZResult,
     detection_confidence: float = 0.0,
@@ -231,7 +226,6 @@ def build_output(
     if 0 < ocr_c < _LOW_OCR_CONF:
         warnings.append("low_ocr_confidence")
 
-    # name separator
     name_separator_missing = False
     if raw_mrz:
         line1 = raw_mrz[0] if raw_mrz else ""
@@ -243,7 +237,6 @@ def build_output(
     if name_separator_missing:
         warnings.append("name_separator_missing")
 
-    # check digit failures
     for k in checkdigit_keys:
         if checks.get(k) is False:
             warnings.append(f"checkdigit_failed:{k.replace('_valid', '')}")
@@ -273,7 +266,6 @@ def build_output(
     if _is_dob_century_ambiguous(result.birth_date_iso):
         warnings.append("dob_century_ambiguous")
 
-    # name token quality
     if raw_mrz and not name_separator_missing:
         line1 = raw_mrz[0]
         name_field = line1[5:] if len(line1) >= 5 else ""
@@ -300,7 +292,6 @@ def build_output(
         if fc < _FIELD_CONF_THRESHOLD and fname != "name":
             warnings.append(f"{fname}_low_confidence")
 
-    # validation summary
     all_checks = {
         "document_number_checkdigit": checks.get("document_number_valid"),
         "date_of_birth_checkdigit":   checks.get("date_of_birth_valid"),

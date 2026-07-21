@@ -65,7 +65,6 @@ def _repair_field(data: str, expected_cd: str) -> Optional[str]:
     chars = list(data)
     positions = range(len(chars))
 
-    # Build per-position candidate replacements from the confusion table.
     def candidates_for(c: str) -> list[str]:
         out = []
         for a, b in CONFUSION_PAIRS:
@@ -75,7 +74,6 @@ def _repair_field(data: str, expected_cd: str) -> Optional[str]:
                 out.append(a)
         return out
 
-    # Single-character swaps.
     for i in positions:
         for repl in candidates_for(chars[i]):
             trial = chars.copy()
@@ -128,7 +126,6 @@ def _repair_name_digits(segment: str) -> str:
     return "".join(_NAME_DIGIT_TO_LETTER.get(c, c) for c in segment)
 
 def parse_name(name_field: str, repaired: list[str] | None = None) -> tuple[str, str, dict]:
-    # Split on '<<' to separate surname from given names.
     parts = name_field.split("<<", 1)
     raw_surname = parts[0]
     raw_given = parts[1] if len(parts) > 1 else ""
@@ -140,11 +137,9 @@ def parse_name(name_field: str, repaired: list[str] | None = None) -> tuple[str,
     if had_digit and repaired is not None:
         repaired.append("name")
 
-    # Convert single '<' to spaces, strip trailing padding.
     surname = " ".join(raw_surname.replace("<", " ").split())
     given_names = " ".join(raw_given.replace("<", " ").split())
 
-    # Build given_names_list from individual name components (split by space).
     given_names_list = [g for g in given_names.split(" ") if g] if given_names else []
 
     full_name = f"{given_names} {surname}".strip() if given_names else surname
