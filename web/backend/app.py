@@ -2,6 +2,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Optional
@@ -29,11 +30,20 @@ def _startup() -> None:
     except Exception:  # pragma: no cover - never block startup on DB issues
         pass
 
-# The React dev server runs on a different origin (Vite default 5173); allow it.
+# Restrict cross-origin access to an explicit allow-list. This API handles
+# passport images and PII, so a wildcard origin ("*") lets any website on the
+# internet drive it from a victim's browser — set CORS_ALLOW_ORIGINS (a
+# comma-separated list) in production. Defaults cover the local Vite dev server.
+_DEFAULT_CORS_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
+_cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ALLOW_ORIGINS", _DEFAULT_CORS_ORIGINS).split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
+    allow_origins=_cors_origins,
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
