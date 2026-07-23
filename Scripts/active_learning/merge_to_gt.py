@@ -26,24 +26,17 @@ _ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(_ROOT))
 
 from Scripts.active_learning.export_dataset import _gt_image_hashes, _connect
+from Scripts.parsing.mrz_constants import format_for_max_len
 
 _ACTIVE_GT_PATH = _ROOT / "GroundTruth" / "ground_truth_active.json"
 _ACTIVE_IMG_DIR = _ROOT / "Images" / "MRZ_Data" / "Processed_data" / "images" / "active"
-
-# MRZ line length → format, when the DB row has no explicit mrz_format.
-_LEN_TO_FORMAT = {44: "TD3", 36: "TD2", 30: "TD1"}
 
 
 def _infer_format(mrz_format: str | None, lines: list[str]) -> str:
     if mrz_format in ("TD1", "TD2", "TD3"):
         return mrz_format
-    max_len = max((len(str(x)) for x in lines), default=0)
-    # Snap to the nearest known length.
-    if max_len >= 40:
-        return "TD3"
-    if max_len >= 33:
-        return "TD2"
-    return "TD1"
+    # No explicit format: infer from the longest line length.
+    return format_for_max_len(max((len(str(x)) for x in lines), default=0))
 
 
 def merge() -> None:

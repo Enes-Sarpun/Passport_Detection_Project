@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-# Canonical line lengths per format.
-TD1_LINES, TD1_LEN = 3, 30
-TD2_LINES, TD2_LEN = 2, 36
-TD3_LINES, TD3_LEN = 2, 44
+# Canonical line lengths per format (single source of truth in mrz_constants).
+from .mrz_constants import (
+    MRZ_VALID_CHARS as _VALID_CHARS,
+    TD1_LEN, TD2_LEN, TD3_LEN,
+)
 
 # Characters OCR commonly uses instead of '<'.
 _FILLER_MAP = str.maketrans("k([ ", "<<<<")
-
-_VALID_CHARS = set("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<")
 
 
 def _normalize(text: str) -> str:

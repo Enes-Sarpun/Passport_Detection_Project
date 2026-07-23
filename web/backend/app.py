@@ -6,7 +6,6 @@ import sys
 from pathlib import Path
 from typing import Any, Optional
 import cv2
-import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,6 +16,7 @@ if str(_ROOT) not in sys.path:
 
 from Scripts.ocr.pipeline import _process_frame  # noqa: E402
 from Scripts.parsing.schema import failure_output  # noqa: E402
+from Scripts.image_utils import decode_image, draw_detection_box  # noqa: E402
 from web.backend import db  # noqa: E402
 
 app = FastAPI(title="Passport Detection Trust Console", version="1.0")
@@ -41,14 +41,14 @@ _MAX_BYTES = 15 * 1024 * 1024  # 15 MB upload cap
 _ALLOWED_SUFFIXES = {".jpg", ".jpeg", ".png", ".bmp", ".webp"}
 
 
-def _annotate(image: np.ndarray, detection) -> str:
-    annotated = image.copy()
-    if detection is not None:
-        x1, y1, x2, y2 = detection.box
-        cv2.rectangle(annotated, (x1, y1), (x2, y2), (212, 105, 28), 2)  # BMW blue (BGR)
-        label = f"MRZ {detection.confidence:.2f}"
-        cv2.putText(annotated, label, (x1, max(y1 - 8, 10)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (212, 105, 28), 2)
+_BOX_COLOR = (212, 105, 28)  # BMW blue (BGR)
+
+
+def _annotate(image, detection) -> str:
+    annotated = (
+        draw_detection_box(image, detection.box, detection.confidence, _BOX_COLOR)
+        if detection is not None else image.copy()
+    )
     ok, buf = cv2.imencode(".jpg", annotated)
     if not ok:
         return ""
@@ -252,7 +252,7 @@ async def scan(file: UploadFile = File(...)) -> dict:
     if len(raw) > _MAX_BYTES:
         raise HTTPException(413, "File too large (max 15 MB)")
 
-    image = cv2.imdecode(np.frombuffer(raw, dtype=np.uint8), cv2.IMREAD_COLOR)
+    image = decode_image(raw)
     if image is None:
         raise HTTPException(422, "Could not decode image")
 

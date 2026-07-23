@@ -4,8 +4,13 @@ import itertools
 from dataclasses import dataclass, field
 from typing import Optional
 from .country_lookup import resolve_country as _resolve_country, _repair_country_digits
-
-MRZ_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
+from .mrz_constants import (
+    DIGIT_TO_LETTER_EXTENDED,
+    LETTER_TO_DIGIT,
+    FORMAT_LINE_LEN,
+    FORMAT_LINE_COUNT,
+    repair_digits_to_letters,
+)
 
 # Standard OCR confusion swaps used during check-digit self-repair.
 CONFUSION_PAIRS = [
@@ -46,15 +51,11 @@ def check_digit_valid(data: str, expected: str) -> bool:
         return False
     return check_digit(data) == expected
 
-_DIGIT_TO_LETTER: dict[str, str] = {"0": "O", "1": "I", "5": "S", "8": "B", "2": "Z", "6": "G", "3": "E", "4": "A"}
-_LETTER_TO_DIGIT: dict[str, str] = {"O": "0", "I": "1", "S": "5", "B": "8", "Z": "2", "G": "6", "D": "0", "Q": "0", "L": "1"}
-
-
 def _apply_class_constraints(data: str, field_type: str) -> str:
     if field_type == "digits":
-        return "".join(_LETTER_TO_DIGIT.get(c, c) if not c.isdigit() and c != "<" else c for c in data)
+        return "".join(LETTER_TO_DIGIT.get(c, c) if not c.isdigit() and c != "<" else c for c in data)
     if field_type == "letters":
-        return "".join(_DIGIT_TO_LETTER.get(c, c) if c.isdigit() else c for c in data)
+        return "".join(DIGIT_TO_LETTER_EXTENDED.get(c, c) if c.isdigit() else c for c in data)
     return data
 
 
@@ -112,18 +113,9 @@ def parse_date(yymmdd: str, *, is_birth: bool) -> Optional[str]:
     except ValueError:
         return None
 
-# Digit→letter map for name fields (letters + '<' only, digits are OCR confusions).
-_NAME_DIGIT_TO_LETTER: dict[str, str] = {
-    "0": "O",
-    "1": "I",
-    "5": "S",
-    "8": "B",
-    "2": "Z",
-    "6": "G",
-}
-
 def _repair_name_digits(segment: str) -> str:
-    return "".join(_NAME_DIGIT_TO_LETTER.get(c, c) for c in segment)
+    # Name fields are letters + '<' only, so any digit is an OCR confusion.
+    return repair_digits_to_letters(segment)
 
 def parse_name(name_field: str, repaired: list[str] | None = None) -> tuple[str, str, dict]:
     parts = name_field.split("<<", 1)
@@ -164,8 +156,7 @@ def _structural_checks(
 ) -> dict[str, bool]:
     from .country_lookup import resolve_country as _rc
 
-    lengths = {"TD3": [44, 44], "TD2": [36, 36], "TD1": [30, 30, 30]}
-    expected = lengths.get(fmt, [])
+    expected = [FORMAT_LINE_LEN[fmt]] * FORMAT_LINE_COUNT[fmt] if fmt in FORMAT_LINE_LEN else []
     line_length_valid = len(lines) == len(expected) and all(
         len(l) == e for l, e in zip(lines, expected)
     )

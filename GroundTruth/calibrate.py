@@ -32,11 +32,16 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-import cv2
-import numpy as np
-
 from Scripts.parsing.mrz_parse import parse_mrz, MRZResult, check_stop_words
-from Scripts.parsing.schema import _field_reliability
+from Scripts.parsing.mrz_fields import COMPARISON_FIELDS as _FIELDS, fields_from_lines as _fields_from_lines
+from Scripts.parsing.schema import (
+    _field_reliability,
+    checkdigit_pass_fraction,
+    structural_pass_fraction,
+    is_expired_from_iso,
+    is_zero_document_number,
+)
+from Scripts.image_utils import load_image
 
 _GT_PATH = _ROOT / "GroundTruth" / "ground_truth.json"
 _ACTIVE_GT_PATH = _ROOT / "GroundTruth" / "ground_truth_active.json"
@@ -70,21 +75,6 @@ def _img_path(stem: str):
     base = _ACTIVE_IMG_DIR if stem.startswith("al_") else _IMG_DIR
     return base / f"{stem}.jpg"
 
-# Same field set the accuracy evaluation uses (issuing_country excluded).
-_FIELDS = [
-    "document_number", "nationality", "surname", "given_names",
-    "birth_date_raw", "expiry_date_raw", "sex",
-]
-
-_CHECKDIGIT_KEYS = {
-    "document_number_valid", "date_of_birth_valid",
-    "date_of_expiry_valid", "personal_number_valid", "composite_valid",
-}
-_STRUCTURAL_KEYS = {
-    "line_length_valid", "dates_well_formed", "expiry_after_birth",
-    "country_codes_known", "sex_value_valid", "document_type_known",
-}
-
 _SIGNAL_COLS = [
     "cd_fraction", "structural_fraction", "mean_field_conf",
     "detection_conf", "is_specimen", "is_expired", "zero_docnum",
@@ -95,32 +85,13 @@ _SIGNAL_COLS = [
 # Stage 1 — signal collection
 # ---------------------------------------------------------------------------
 
-def _fields_from_lines(lines: list[str]) -> dict[str, str]:
-    r = parse_mrz(lines)
-    if r is None:
-        return {f: "" for f in _FIELDS}
-    return {
-        "document_number": r.document_number, "nationality": r.nationality,
-        "surname": r.surname, "given_names": r.given_names,
-        "birth_date_raw": r.birth_date_raw, "expiry_date_raw": r.expiry_date_raw,
-        "sex": r.sex,
-    }
-
-
 def _signals_from_result(result: MRZResult, det_conf: float, ocr_conf: float) -> dict[str, float]:
     """Recompute the exact signals schema.py feeds into _reliability_score."""
     checks = result.validation
     repaired = set(result.auto_repaired_fields)
 
-    passed_cd = sum(
-        1 for k, v in checks.items()
-        if k in _CHECKDIGIT_KEYS and v is True
-        and k.replace("_valid", "") not in repaired
-    )
-    cd_fraction = passed_cd / len(_CHECKDIGIT_KEYS)
-
-    passed_struct = sum(1 for k in _STRUCTURAL_KEYS if checks.get(k) is True)
-    structural_fraction = passed_struct / len(_STRUCTURAL_KEYS)
+    cd_fraction = checkdigit_pass_fraction(checks, repaired)
+    structural_fraction = structural_pass_fraction(checks)
 
     # mean_field_conf as schema.py computes it (now per-field reliability)
     fc = {
@@ -133,16 +104,9 @@ def _signals_from_result(result: MRZResult, det_conf: float, ocr_conf: float) ->
     }
     mean_field_conf = sum(fc.values()) / len(fc)
 
-    import datetime as _dt
-    is_expired = False
-    if result.expiry_date_iso:
-        try:
-            is_expired = _dt.date.fromisoformat(result.expiry_date_iso) < _dt.date.today()
-        except ValueError:
-            pass
+    is_expired = is_expired_from_iso(result.expiry_date_iso)
     is_specimen = check_stop_words(result.surname, result.given_names)
-    doc_clean = result.document_number.replace("<", "")
-    zero_docnum = bool(doc_clean) and all(c == "0" for c in doc_clean)
+    zero_docnum = is_zero_document_number(result.document_number)
 
     return {
         "cd_fraction": round(cd_fraction, 4),
@@ -167,7 +131,7 @@ def collect_signals(runs: int = 3) -> None:
         img_path = _img_path(stem)
         if not img_path.exists():
             continue
-        image = cv2.imdecode(np.frombuffer(img_path.read_bytes(), dtype=np.uint8), cv2.IMREAD_COLOR)
+        image = load_image(img_path)
         gt_fields = _fields_from_lines(gt[stem]["lines"])
 
         # Average signals + correctness across runs (OCR is mildly non-deterministic).

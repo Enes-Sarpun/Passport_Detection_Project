@@ -1,6 +1,8 @@
 from __future__ import annotations
 import pycountry
 
+from .mrz_constants import repair_digits_to_letters
+
 # ICAO-special / reserved codes that are not in ISO 3166-1 alpha-3.
 _ICAO_OVERRIDES: dict[str, str] = {
     "UTO": "Utopia (ICAO test code)",
@@ -20,18 +22,8 @@ _ICAO_OVERRIDES: dict[str, str] = {
     "XXX": "Unspecified nationality",
 }
 
-# OCR digit→letter confusions that appear in alphabetic-only fields (country codes).
-_DIGIT_TO_LETTER: dict[str, str] = {
-    "0": "O",
-    "1": "I",
-    "5": "S",
-    "8": "B",
-    "2": "Z",
-    "6": "G",
-}
-
 def _repair_country_digits(code: str) -> str:
-    return "".join(_DIGIT_TO_LETTER.get(c, c) for c in code)
+    return repair_digits_to_letters(code)
 
 
 def resolve_country(alpha3: str, repaired: list[str] | None = None, field_name: str = "") -> dict[str, str]:

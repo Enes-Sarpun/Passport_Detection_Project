@@ -6,6 +6,8 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from Scripts.parsing.mrz_constants import MRZ_CHARSET, MRZ_VALID_CHARS, TD1_LEN, TD3_LEN
+
 
 def _resolve_tesseract_cmd() -> str:
     env = os.environ.get("TESSERACT_CMD")
@@ -34,14 +36,15 @@ def _resolve_tessdata_dir() -> Path:
 _TESSERACT_CMD = _resolve_tesseract_cmd()
 _TESSDATA_DIR = _resolve_tessdata_dir()
 
-_MRZ_CHARSET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789<"
+# Backwards-compatible alias for the shared charset (imported elsewhere).
+_MRZ_CHARSET = MRZ_CHARSET
 _MIN_STRIP_H = 80
 
 _JUNK_MAP = str.maketrans(
     "OoIilBsSzZqQdD .,;:!?()-",
     "001188552200DD<<<<<<<<<<",
 )
-_VALID_CHARS = set(_MRZ_CHARSET)
+_VALID_CHARS = MRZ_VALID_CHARS
 
 
 def _get_pytesseract():
@@ -128,7 +131,7 @@ def _read_image_ocrb(image: np.ndarray, n_lines: int) -> tuple[list[str], float]
     # Build one string per line, sorted by line_num
     result_lines: list[str] = []
     all_confs: list[float] = []
-    target_len = 30 if n_lines >= 3 else 44
+    target_len = TD1_LEN if n_lines >= 3 else TD3_LEN
 
     for line_num in sorted(line_words.keys()):
         words = line_words[line_num]
@@ -151,6 +154,6 @@ def run_tesseract_ocrb(image: np.ndarray, n_lines: int = 2) -> TesseractResult:
 
     # Pad to at least n_lines so downstream code always has something to score.
     while len(lines) < n_lines:
-        lines.append(TesseractLine(text="<" * (30 if n_lines >= 3 else 44), confidence=0.0))
+        lines.append(TesseractLine(text="<" * (TD1_LEN if n_lines >= 3 else TD3_LEN), confidence=0.0))
 
     return TesseractResult(lines=lines)

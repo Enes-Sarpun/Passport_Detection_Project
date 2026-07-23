@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 from Scripts.detection.detect import detect_mrz, Detection
 from Scripts.detection.preprocess import crop, deskew, upscale, _to_gray
+from Scripts.image_utils import load_image, draw_detection_box
 from Scripts.parsing.mrz_parse import parse_mrz, MRZResult
 from Scripts.parsing.country_lookup import resolve_country
 from Scripts.parsing.schema import build_output, failure_output, to_json
@@ -310,8 +311,7 @@ def process_image(
         stem = source.stem
         if not source.exists():
             return failure_output(f"file_not_found: {source}")
-        raw = np.frombuffer(source.read_bytes(), dtype=np.uint8)
-        image = cv2.imdecode(raw, cv2.IMREAD_COLOR)
+        image = load_image(source)
         if image is None:
             return failure_output("image_load_failed")
 
@@ -329,12 +329,7 @@ def process_image(
             json_path.write_text(to_json(result), encoding="utf-8")
 
             if detection is not None:
-                annotated = image.copy()
-                x1, y1, x2, y2 = detection.box
-                cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 200, 255), 2)
-                label = f"MRZ {detection.confidence:.2f}"
-                cv2.putText(annotated, label, (x1, max(y1 - 8, 10)),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 200, 255), 2)
+                annotated = draw_detection_box(image, detection.box, detection.confidence)
                 cv2.imwrite(str(out_path / f"{stem}_tess_annotated.jpg"), annotated)
 
         return result
