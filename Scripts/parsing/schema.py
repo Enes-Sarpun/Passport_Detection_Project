@@ -8,6 +8,49 @@ from .schema_helpers import _DOC_TYPE_MAP, _SEX_MAP
 
 SCHEMA_VERSION = "5"
 
+# Validation-check key groups, shared with GroundTruth/calibrate.py so the two
+# never disagree on which checks feed the reliability score.
+CHECKDIGIT_KEYS = {
+    "document_number_valid", "date_of_birth_valid",
+    "date_of_expiry_valid", "personal_number_valid", "composite_valid",
+}
+STRUCTURAL_KEYS = {
+    "line_length_valid", "dates_well_formed", "expiry_after_birth",
+    "country_codes_known", "sex_value_valid", "document_type_known",
+}
+
+
+def checkdigit_pass_fraction(checks: dict, repaired_set: set) -> float:
+    """Fraction of check digits that passed without needing an auto-repair."""
+    passed = sum(
+        1 for k, v in checks.items()
+        if k in CHECKDIGIT_KEYS and v is True
+        and k.replace("_valid", "") not in repaired_set
+    )
+    return passed / len(CHECKDIGIT_KEYS)
+
+
+def structural_pass_fraction(checks: dict) -> float:
+    """Fraction of structural consistency checks that passed."""
+    passed = sum(1 for k in STRUCTURAL_KEYS if checks.get(k) is True)
+    return passed / len(STRUCTURAL_KEYS)
+
+
+def is_expired_from_iso(iso: Optional[str]) -> bool:
+    """True if the given ISO date is strictly before today."""
+    if not iso:
+        return False
+    try:
+        return _dt.date.fromisoformat(iso) < _dt.date.today()
+    except ValueError:
+        return False
+
+
+def is_zero_document_number(document_number: str) -> bool:
+    """True if the document number is present but all-zeros (specimen tell)."""
+    clean = document_number.replace("<", "")
+    return bool(clean) and all(c == "0" for c in clean)
+
 _LOW_OCR_CONF = 0.60
 _LOW_DETECT_CONF = 0.50
 # Rescan / manual-review threshold, chosen from the calibration data: at 0.75 the
@@ -176,38 +219,17 @@ def build_output(
         "name": _field_reliability("name", ocr_c, None, "name" in repaired_set),
     }
 
-    checkdigit_keys = {
-        "document_number_valid", "date_of_birth_valid",
-        "date_of_expiry_valid", "personal_number_valid", "composite_valid",
-    }
-    passed_cd = sum(
-        1 for k, v in checks.items()
-        if k in checkdigit_keys and v is True
-        and k.replace("_valid", "") not in repaired_set
-    )
-    total_cd = len(checkdigit_keys)
-    cd_fraction = passed_cd / total_cd
+    checkdigit_keys = CHECKDIGIT_KEYS
+    cd_fraction = checkdigit_pass_fraction(checks, repaired_set)
 
-    structural_keys = {
-        "line_length_valid", "dates_well_formed", "expiry_after_birth",
-        "country_codes_known", "sex_value_valid", "document_type_known",
-    }
-    passed_struct = sum(1 for k in structural_keys if checks.get(k) is True)
-    structural_fraction = passed_struct / len(structural_keys)
+    structural_fraction = structural_pass_fraction(checks)
 
     mean_field_conf = sum(field_confs.values()) / len(field_confs)
 
-    today = _dt.date.today()
-    is_expired = False
-    if result.expiry_date_iso:
-        try:
-            is_expired = _dt.date.fromisoformat(result.expiry_date_iso) < today
-        except ValueError:
-            pass
+    is_expired = is_expired_from_iso(result.expiry_date_iso)
 
     is_specimen = check_stop_words(result.surname, result.given_names)
-    doc_number_clean = result.document_number.replace("<", "")
-    zero_docnum = bool(doc_number_clean) and all(c == "0" for c in doc_number_clean)
+    zero_docnum = is_zero_document_number(result.document_number)
 
     rel_score = _reliability_score(
         cd_fraction, structural_fraction, mean_field_conf, det_c,

@@ -25,31 +25,13 @@ from pathlib import Path
 _ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_ROOT))
 
-import cv2
-import numpy as np
-
-from Scripts.parsing.mrz_parse import parse_mrz
+from Scripts.parsing.mrz_fields import COMPARISON_FIELDS as _FIELDS, fields_from_lines as _fields_from_lines
+from Scripts.image_utils import load_image as _load_image
 from Scripts.ocr.pipeline import _process_frame
 
 _GT_PATH = _ROOT / "GroundTruth" / "ground_truth.json"
 _IMG_DIR = _ROOT / "Images" / "MRZ_Data" / "Processed_data" / "images" / "test"
 _REPORT_PATH = _ROOT / "GroundTruth" / "accuracy_report.csv"
-
-# Fields compared for field accuracy (derived from the ICAO parse of each MRZ).
-# issuing_country is intentionally excluded: it is read from line 1's country
-# code (positions 2-4), which corrupts whenever the name line is noisy. The
-# nationality field (read from line 2) carries the same information far more
-# reliably, so issuing_country only added noise to the accuracy measurement.
-_FIELDS = [
-    "document_number",
-    "nationality",
-    "surname",
-    "given_names",
-    "birth_date_raw",
-    "expiry_date_raw",
-    "sex",
-]
-
 
 # ---------------------------------------------------------------------------
 # Metrics
@@ -93,22 +75,6 @@ def cer(gt_lines: list[str], pred_lines: list[str]) -> float:
     return total_dist / total_chars if total_chars else 0.0
 
 
-def _fields_from_lines(lines: list[str]) -> dict[str, str]:
-    """Parse MRZ lines into the comparison field set. Returns empty strings on failure."""
-    result = parse_mrz(lines)
-    if result is None:
-        return {f: "" for f in _FIELDS}
-    return {
-        "document_number": result.document_number,
-        "nationality": result.nationality,
-        "surname": result.surname,
-        "given_names": result.given_names,
-        "birth_date_raw": result.birth_date_raw,
-        "expiry_date_raw": result.expiry_date_raw,
-        "sex": result.sex,
-    }
-
-
 def field_accuracy(gt_fields: dict[str, str], pred_fields: dict[str, str]) -> tuple[float, list[str]]:
     """Fraction of fields that match exactly. Returns (accuracy, list_of_failed_fields)."""
     failed = [f for f in _FIELDS if gt_fields.get(f, "") != pred_fields.get(f, "")]
@@ -120,12 +86,7 @@ def field_accuracy(gt_fields: dict[str, str], pred_fields: dict[str, str]) -> tu
 # Pipeline runner
 # ---------------------------------------------------------------------------
 
-def _load_image(path: Path) -> np.ndarray | None:
-    raw = np.frombuffer(path.read_bytes(), dtype=np.uint8)
-    return cv2.imdecode(raw, cv2.IMREAD_COLOR)
-
-
-def _pred_lines(image: np.ndarray) -> list[str]:
+def _pred_lines(image) -> list[str]:
     """Run the Tesseract pipeline and return the raw MRZ lines it produced.
     Fallback OCR is disabled so ground-truth metrics stay pure-Tesseract."""
     output, _ = _process_frame(image, use_fallback=False)
