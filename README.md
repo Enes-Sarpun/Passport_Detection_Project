@@ -12,6 +12,7 @@ and get clean, validated JSON back.
   <img alt="YOLO" src="https://img.shields.io/badge/Detection-YOLO-00FFFF?logo=yolo&logoColor=black">
   <img alt="OCR" src="https://img.shields.io/badge/OCR-Tesseract%20%2B%20OCR--B-FF6F00">
   <img alt="License" src="https://img.shields.io/badge/License-MIT-green">
+  <a href="https://deepwiki.com/Enes-Sarpun/Passport_Detection_Project"><img alt="Ask DeepWiki" src="https://deepwiki.com/badge.svg"></a>
 </p>
 
 </div>
