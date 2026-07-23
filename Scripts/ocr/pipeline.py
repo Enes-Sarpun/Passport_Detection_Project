@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import logging
 from pathlib import Path
 from typing import Optional, Union
 import cv2
@@ -15,6 +16,8 @@ from Scripts.parsing.reconstruct import (
     detect_format, _validation_score,
 )
 from .engine import run_tesseract_ocrb, TesseractResult
+
+logger = logging.getLogger(__name__)
 
 
 def _count_cd_passes(lines: list[str]) -> int:
@@ -149,6 +152,14 @@ import os as _os
 _OCR_MAX_WORKERS = int(_os.environ.get("OCR_MAX_WORKERS", "0"))  # 0 = auto (all)
 
 
+def _is_config_error(exc: BaseException) -> bool:
+    """True for errors that mean OCR can never succeed (e.g. Tesseract binary
+    missing). These are configuration problems that must surface to the caller
+    rather than be swallowed as a per-candidate read failure."""
+    import pytesseract
+    return isinstance(exc, pytesseract.TesseractNotFoundError)
+
+
 def _run_ocr_passes(candidates: list[np.ndarray]) -> list[TesseractResult]:
     workers = _OCR_MAX_WORKERS or len(candidates)
     workers = max(1, min(workers, len(candidates)))
@@ -158,8 +169,10 @@ def _run_ocr_passes(candidates: list[np.ndarray]) -> list[TesseractResult]:
         for img in candidates:
             try:
                 results.append(run_tesseract_ocrb(img, 2))
-            except Exception:
-                pass
+            except Exception as exc:
+                if _is_config_error(exc):
+                    raise
+                logger.warning("OCR pass failed for one candidate", exc_info=True)
         return results
 
     from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -169,8 +182,10 @@ def _run_ocr_passes(candidates: list[np.ndarray]) -> list[TesseractResult]:
         for future in as_completed(futures):
             try:
                 results.append(future.result())
-            except Exception:
-                pass
+            except Exception as exc:
+                if _is_config_error(exc):
+                    raise
+                logger.warning("OCR pass failed for one candidate", exc_info=True)
     return results
 
 

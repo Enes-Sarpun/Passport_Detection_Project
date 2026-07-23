@@ -1,10 +1,13 @@
 from __future__ import annotations
+import logging
 import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
 import cv2
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 def _resolve_tesseract_cmd() -> str:
@@ -111,7 +114,17 @@ def _read_image_ocrb(image: np.ndarray, n_lines: int) -> tuple[list[str], float]
             config=config,
             output_type=pytesseract.Output.DICT,
         )
+    except pytesseract.TesseractNotFoundError:
+        # A missing Tesseract binary is a configuration error, not a per-image
+        # read failure: every call will fail identically. Swallowing it here
+        # would make the whole pipeline silently report "no MRZ", hiding the
+        # real cause — so let it propagate to the caller.
+        raise
     except Exception:
+        # A genuine per-image failure (e.g. a degenerate crop Tesseract can't
+        # process). Log it so it is diagnosable, then let this candidate be
+        # treated as an empty read rather than aborting the whole pipeline.
+        logger.warning("Tesseract read failed for one candidate", exc_info=True)
         return [], 0.0
 
     # Group words by line_num

@@ -1,5 +1,6 @@
 from __future__ import annotations
 import base64
+import logging
 import os
 from typing import Optional
 import cv2
@@ -8,6 +9,8 @@ import numpy as np
 # Reuse the exact MRZ normalisation Tesseract uses, so both engines emit lines
 # in the same charset/length format for a fair check-digit comparison.
 from .engine import _clean_text, _snap, _MRZ_CHARSET
+
+logger = logging.getLogger(__name__)
 
 _GOOGLE_ENDPOINT = "https://vision.googleapis.com/v1/images:annotate"
 _TIMEOUT = 15  # seconds; a slow fallback must not hang the request
@@ -86,6 +89,9 @@ def _google_vision_text(image_bgr: np.ndarray) -> Optional[str]:
         return texts[0].get("description") if texts else None
     except Exception:
         # Best-effort rescue: any failure just means "no fallback result".
+        # Log it (the fallback firing at all means the primary read was shaky,
+        # so a silent failure here would hide why no rescue happened).
+        logger.warning("Cloud OCR fallback (Google Vision) failed", exc_info=True)
         return None
 
 
