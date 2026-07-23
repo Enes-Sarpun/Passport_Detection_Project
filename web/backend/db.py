@@ -10,8 +10,11 @@ database), get_pool() returns None and the /api/save endpoint reports 503 while
 the scan flow keeps working.
 """
 from __future__ import annotations
+import logging
 import os
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 # psycopg / psycopg_pool are only needed when a database is configured. Import
 # lazily so the app still boots (and /api/scan works) without them installed.
@@ -57,6 +60,9 @@ def get_pool():
         _pool = ConnectionPool(dsn, min_size=1, max_size=2, open=True)
     except Exception:
         # Misconfigured/unreachable DB must not crash the app; save() will 503.
+        # Log it so operators can see *why* saving is unavailable (a silent
+        # None here previously made a broken DSN look like "no DB configured").
+        logger.warning("Database pool unavailable; /api/save will return 503", exc_info=True)
         _pool = None
     return _pool
 

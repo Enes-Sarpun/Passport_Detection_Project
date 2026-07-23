@@ -2,6 +2,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -10,6 +11,8 @@ import cv2
 import numpy as np
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+
+logger = logging.getLogger(__name__)
 
 # Make the project root importable so `Scripts.*` resolves regardless of CWD.
 _ROOT = Path(__file__).resolve().parents[2]
@@ -28,7 +31,9 @@ def _startup() -> None:
     try:
         db.init_schema()
     except Exception:  # pragma: no cover - never block startup on DB issues
-        pass
+        # Startup must not fail on DB problems (scan still works without a DB),
+        # but log it so a broken schema/connection isn't invisible.
+        logger.warning("Database schema init failed at startup", exc_info=True)
 
 # Restrict cross-origin access to an explicit allow-list. This API handles
 # passport images and PII, so a wildcard origin ("*") lets any website on the

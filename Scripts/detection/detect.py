@@ -1,9 +1,12 @@
 from __future__ import annotations
+import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_WEIGHTS = Path(__file__).parent.parent.parent / "Images" / "Results" / "mrz_detect2" / "weights" / "best.pt"
 
@@ -14,7 +17,9 @@ def _limit_torch_threads() -> None:
         n = int(os.environ.get("TORCH_NUM_THREADS", "1"))
         torch.set_num_threads(max(1, n))
     except Exception:
-        pass
+        # Best-effort tuning only; log at debug so it's never silent but also
+        # doesn't clutter normal output when torch isn't importable.
+        logger.debug("Could not limit torch threads", exc_info=True)
 
 @dataclass
 class Detection:
