@@ -6,6 +6,7 @@ tesseract binary + OCR-B model); only deterministic helpers are covered.
 from __future__ import annotations
 import os
 import sys
+from pathlib import Path
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -91,7 +92,9 @@ class TestResolvers:
 
     def test_tessdata_dir_prefers_env(self, monkeypatch):
         monkeypatch.setenv("TESSDATA_PREFIX", "/custom/tessdata")
-        assert str(e._resolve_tessdata_dir()) == "/custom/tessdata"
+        # Compare as Path objects so the assertion is OS-independent
+        # (Windows renders the separators as backslashes).
+        assert e._resolve_tessdata_dir() == Path("/custom/tessdata")
 
     def test_tessdata_dir_finds_bundled(self, monkeypatch):
         monkeypatch.delenv("TESSDATA_PREFIX", raising=False)
